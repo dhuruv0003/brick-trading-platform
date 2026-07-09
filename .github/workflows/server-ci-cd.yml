@@ -49,7 +49,8 @@ jobs:
         run: find src -name "*.js" -print0 | xargs -0 -n1 node --check
 
       - name: Verify entry point resolves (dry parse, no server start)
-        run: node -e "require('module')._resolveFilename('./src/server.js', { paths: ['.'] }); console.log('Entry point resolves OK')"
+        run: |
+          node -e "require('module')._resolveFilename('./src/server.js', { paths: ['.'] }); console.log('Entry point resolves OK')"
 
   # ---------------------------------------------------------
   # CD: build & publish a Docker image (only on push to main)
