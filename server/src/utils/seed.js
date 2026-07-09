@@ -21,6 +21,23 @@ const seed = async () => {
     await mongoose.connect(config.mongoUri);
     console.log('Connected to MongoDB for seeding...');
 
+    const force = process.argv.includes('--force');
+
+    // Safety check: don't wipe/re-seed a database that already has data.
+    // This lets `seed.js` be run automatically on every deploy (e.g. via a
+    // Pre-Deploy Command) without ever erasing real production data.
+    // Pass --force (e.g. `node src/utils/seed.js --force`) to intentionally
+    // wipe and reseed anyway.
+    if (!force) {
+      const existingUserCount = await User.countDocuments();
+      if (existingUserCount > 0) {
+        console.log(`Database already has data (${existingUserCount} user(s) found). Skipping seed.`);
+        console.log('Run with --force to wipe and reseed anyway: node src/utils/seed.js --force');
+        await mongoose.disconnect();
+        process.exit(0);
+      }
+    }
+
     // Clear existing data
     await Promise.all([
       User.deleteMany(), Category.deleteMany(), Product.deleteMany(),
