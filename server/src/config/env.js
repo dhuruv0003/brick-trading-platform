@@ -29,6 +29,17 @@ module.exports = {
     from: process.env.EMAIL_FROM,
     adminEmail: process.env.ADMIN_EMAIL,
   },
+  whatsapp: {
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+    apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
+    // Admin's own WhatsApp number to notify of new leads, in addition to the
+    // customer confirmation. Falls back to company.whatsapp if unset.
+    adminWhatsapp: process.env.ADMIN_WHATSAPP || process.env.COMPANY_WHATSAPP,
+    // Optional: name of an approved Meta template to use instead of a plain
+    // text message, for messaging customers who haven't messaged you first.
+    fallbackTemplate: process.env.WHATSAPP_FALLBACK_TEMPLATE || null,
+  },
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
   },

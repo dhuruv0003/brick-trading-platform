@@ -23,7 +23,7 @@ import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import BusinessIcon from '@mui/icons-material/Business';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import { inquiriesAPI } from '../services/api';
+import { inquiriesAPI, getApiErrorMessage } from '../services/api';
 import { useSnackbar } from 'notistack';
 
 export default function Home() {
@@ -56,7 +56,7 @@ export default function Home() {
       enqueueSnackbar('Inquiry submitted successfully! We will contact you soon.', { variant: 'success' });
       setFormData({ name: '', phone: '', email: '', customerType: 'homeowner', message: '' });
     } catch (err: any) {
-      enqueueSnackbar(err.response?.data?.message || 'Failed to submit inquiry. Please try again.', { variant: 'error' });
+      enqueueSnackbar(getApiErrorMessage(err, 'Failed to submit inquiry. Please try again.'), { variant: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +185,7 @@ export default function Home() {
         <Typography variant="h2" align="center" sx={{ mb: 2, fontWeight: 800 }}>
           Why Builders Choose BrickPro
         </Typography>
-        <Typography variant="body1" align="center" sx={{ color: theme.palette.text.secondary, maxW: 600, mx: 'auto', mb: 8 }}>
+        <Typography variant="body1" align="center" sx={{ color: theme.palette.text.secondary, maxWidth: 600, mx: 'auto', mb: 8 }}>
           We control the entire supply chain to ensure premium quality, transparent pricing, and punctual deliveries.
         </Typography>
 
@@ -218,7 +218,7 @@ export default function Home() {
           <Typography variant="h2" align="center" sx={{ mb: 2, fontWeight: 800 }}>
             Our Product Catalog
           </Typography>
-          <Typography variant="body1" align="center" sx={{ color: theme.palette.text.secondary, maxW: 600, mx: 'auto', mb: 8 }}>
+          <Typography variant="body1" align="center" sx={{ color: theme.palette.text.secondary, maxWidth: 600, mx: 'auto', mb: 8 }}>
             Explore our wide range of construction bricks and block materials suited for different masonry styles.
           </Typography>
 
@@ -259,7 +259,7 @@ export default function Home() {
         <Typography variant="h2" align="center" sx={{ mb: 2, fontWeight: 800 }}>
           Client Success Stories
         </Typography>
-        <Typography variant="body1" align="center" sx={{ color: theme.palette.text.secondary, maxW: 600, mx: 'auto', mb: 8 }}>
+        <Typography variant="body1" align="center" sx={{ color: theme.palette.text.secondary, maxWidth: 600, mx: 'auto', mb: 8 }}>
           Hear what leading developers, masons, and homeowners say about our products and services.
         </Typography>
 

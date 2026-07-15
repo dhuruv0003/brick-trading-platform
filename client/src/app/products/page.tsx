@@ -288,7 +288,7 @@ export default function ProductsPage() {
 
       {/* ─── Quote Builder Sidebar Drawer ────────────────────────────────── */}
       <Drawer anchor="right" open={isCartOpen} onClose={() => dispatch(toggleCart())}>
-        <Box sx={{ width: { xs: 320, sm: 400 }, p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ width: { xs: '85vw', sm: 400 }, maxWidth: 400, p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 800 }}>
               Quote Builder

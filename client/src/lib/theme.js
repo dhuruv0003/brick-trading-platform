@@ -1,5 +1,5 @@
 'use client';
-import { createTheme, alpha } from '@mui/material/styles';
+import { createTheme, alpha, responsiveFontSizes } from '@mui/material/styles';
 
 const BRAND = {
   orange: '#c2410c',
@@ -14,7 +14,7 @@ const BRAND = {
   white: '#ffffff',
 };
 
-export const theme = createTheme({
+let theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
@@ -201,21 +201,32 @@ export const theme = createTheme({
   },
 });
 
-export const darkTheme = createTheme({
-  ...theme,
-  palette: {
-    ...theme.palette,
-    mode: 'dark',
-    background: {
-      default: '#0c0a09',
-      paper: '#1c1917',
+// Scales h1-h6 (and other typography variants) down at smaller breakpoints
+// instead of using MUI's fixed desktop-size defaults (e.g. h1 = 96px) at
+// every screen width — this was the root cause of oversized headings
+// across the site on mobile, since no per-breakpoint fontSize overrides
+// existed anywhere in the typography config above.
+theme = responsiveFontSizes(theme, { breakpoints: ['sm', 'md', 'lg'], factor: 2 });
+
+export { theme };
+
+export const darkTheme = responsiveFontSizes(
+  createTheme({
+    ...theme,
+    palette: {
+      ...theme.palette,
+      mode: 'dark',
+      background: {
+        default: '#0c0a09',
+        paper: '#1c1917',
+      },
+      text: {
+        primary: '#fafaf9',
+        secondary: '#a8a29e',
+      },
+      divider: '#292524',
     },
-    text: {
-      primary: '#fafaf9',
-      secondary: '#a8a29e',
-    },
-    divider: '#292524',
-  },
-});
+  }),
+);
 
 export default theme;

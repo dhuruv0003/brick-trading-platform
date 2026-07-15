@@ -73,18 +73,19 @@ export default function Header() {
           borderBottom: scrolled ? `1px solid ${theme.palette.divider}` : 'none',
           transition: 'all 0.3s ease',
           top: 0,
-          zIndex: theme.zIndex.drawer + 1,
+          zIndex: theme.zIndex.appBar,
         }}
       >
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ justifyContent: 'space-between', height: 80 }}>
+          <Toolbar disableGutters sx={{ justifyContent: 'space-between', height: { xs: 64, md: 80 }, gap: 1 }}>
             {/* Logo */}
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Link href="/" style={{ textDecoration: 'none', minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                 <Box
                   sx={{
-                    width: 36,
-                    height: 36,
+                    width: { xs: 30, md: 36 },
+                    height: { xs: 30, md: 36 },
+                    flexShrink: 0,
                     backgroundColor: theme.palette.primary.main,
                     borderRadius: 1.5,
                     display: 'flex',
@@ -93,17 +94,19 @@ export default function Header() {
                     boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
                   }}
                 >
-                  <Typography variant="h5" sx={{ color: '#fff', fontWeight: 900, fontFamily: 'serif' }}>
+                  <Typography variant="h5" sx={{ color: '#fff', fontWeight: 900, fontFamily: 'serif', fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
                     B
                   </Typography>
                 </Box>
                 <Typography
                   variant="h5"
+                  noWrap
                   sx={{
                     fontWeight: 800,
                     color: theme.palette.text.primary,
                     fontFamily: '"Playfair Display", serif',
                     letterSpacing: '-0.03em',
+                    fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.5rem' },
                   }}
                 >
                   Brick<span style={{ color: theme.palette.primary.main }}>Pro</span>
@@ -142,7 +145,7 @@ export default function Header() {
             )}
 
             {/* CTA Buttons */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, md: 1.5 }, flexShrink: 0 }}>
               {!isMobile && (
                 <Button
                   component="a"
@@ -163,8 +166,21 @@ export default function Header() {
                   WhatsApp
                 </Button>
               )}
-              <Button component={Link} href="/quote" variant="contained" color="primary" sx={{ borderRadius: 2 }}>
-                Request Quote
+              <Button
+                component={Link}
+                href="/quote"
+                variant="contained"
+                color="primary"
+                sx={{
+                  borderRadius: 2,
+                  px: { xs: 1.25, sm: 2 },
+                  py: { xs: 0.5, sm: 1 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
+                }}
+              >
+                {isMobile ? 'Quote' : 'Request Quote'}
               </Button>
               {isMobile && (
                 <IconButton
@@ -172,7 +188,7 @@ export default function Header() {
                   aria-label="open drawer"
                   edge="start"
                   onClick={handleDrawerToggle}
-                  sx={{ color: theme.palette.text.primary }}
+                  sx={{ color: theme.palette.text.primary, flexShrink: 0 }}
                 >
                   <MenuIcon />
                 </IconButton>
@@ -190,7 +206,7 @@ export default function Header() {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', lg: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 280, p: 3 },
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: '80vw', maxWidth: 320, p: { xs: 2.5, sm: 3 } },
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>

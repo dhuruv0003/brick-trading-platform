@@ -2,6 +2,24 @@ import axios from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
+if (typeof window !== 'undefined') {
+  const runningOnLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (API_BASE.includes('localhost') && !runningOnLocalhost) {
+    // This means NEXT_PUBLIC_API_URL was never set in the deployment
+    // platform's environment variables (or was set after the last build —
+    // NEXT_PUBLIC_ vars are baked in at build time, so changing them
+    // requires a redeploy). Every API call from this session will fail as
+    // a network error until that's fixed.
+    // eslint-disable-next-line no-console
+    console.error(
+      '[BrickPro] NEXT_PUBLIC_API_URL is not set for this deployment — the app is trying to ' +
+      `reach ${API_BASE} from a browser on ${window.location.hostname}, which will always fail. ` +
+      'Set NEXT_PUBLIC_API_URL to your deployed backend URL in your hosting platform\'s environment ' +
+      'variables and redeploy.',
+    );
+  }
+}
+
 const api = axios.create({
   baseURL: API_BASE,
   timeout: 30000,
@@ -10,6 +28,34 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+/**
+ * Extracts a human-readable message from any Axios error, distinguishing
+ * "server responded with an error" from "request never reached the server"
+ * (network failure / CORS / wrong API URL / backend down) — the two most
+ * common deployment-time failure modes, which otherwise both look identical
+ * to the end user as a generic "failed" toast.
+ */
+export function getApiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+  if (!error?.isAxiosError) return fallback;
+
+  if (error.response) {
+    // Server responded, but with an error status.
+    return error.response.data?.message || fallback;
+  }
+
+  if (error.request) {
+    // Request was sent but no response came back — network/CORS/DNS/server-down.
+    // eslint-disable-next-line no-console
+    console.error('[BrickPro] API request failed with no response (network/CORS/server down):', {
+      url: error.config?.baseURL + error.config?.url,
+      message: error.message,
+    });
+    return 'Could not reach the server. Please check your internet connection and try again in a moment.';
+  }
+
+  return error.message || fallback;
+}
 
 // Request interceptor — attach JWT token
 api.interceptors.request.use(

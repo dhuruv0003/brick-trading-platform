@@ -25,10 +25,42 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow serving static images
 }));
 
+// CLIENT_URL may contain one or more comma-separated origins (e.g. your
+// production domain plus a custom domain). Trailing slashes are stripped
+// because a mismatched trailing slash is a common cause of "CORS works
+// locally but fails once deployed" — the browser's Origin header never has
+// a trailing slash, but a pasted URL in an env var often does.
+const normalizeOrigin = (url) => url.trim().replace(/\/+$/, '');
+
+const allowedOrigins = (config.clientUrl || '')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+if (config.env !== 'production') {
+  allowedOrigins.push('http://localhost:5173', 'http://localhost:3000');
+}
+
 app.use(cors({
-  origin: config.env === 'production'
-    ? [config.clientUrl]
-    : ['http://localhost:5173', 'http://localhost:3000', config.clientUrl],
+  origin(origin, callback) {
+    // No Origin header (curl, server-to-server, health checks) — allow.
+    if (!origin) return callback(null, true);
+
+    const normalized = normalizeOrigin(origin);
+
+    // Exact match against configured origins.
+    if (allowedOrigins.includes(normalized)) return callback(null, true);
+
+    // Always allow this project's own Vercel preview/production deployments
+    // (e.g. https://brick-trade-<hash>.vercel.app) — Vercel assigns a new
+    // preview subdomain on every deploy, so a single hardcoded CLIENT_URL
+    // will otherwise start rejecting requests the moment a new preview or
+    // redeploy gets a different auto-generated hostname.
+    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(normalized)) return callback(null, true);
+
+    logger.warn(`CORS blocked request from unrecognized origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

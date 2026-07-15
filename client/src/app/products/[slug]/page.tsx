@@ -133,7 +133,7 @@ export default function ProductDetailPage() {
         Back to Catalog
       </Button>
 
-      <Grid container spacing={6} sx={{ mb: 8 }}>
+      <Grid container spacing={{ xs: 3, md: 6 }} sx={{ mb: 8 }}>
         {/* Product Images */}
         <Grid item xs={12} md={6}>
           <Box

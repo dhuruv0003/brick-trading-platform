@@ -16,7 +16,7 @@ import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { inquiriesAPI } from '../../services/api';
+import { inquiriesAPI, getApiErrorMessage } from '../../services/api';
 import { useSnackbar } from 'notistack';
 
 export default function ContactPage() {
@@ -48,7 +48,7 @@ export default function ContactPage() {
       enqueueSnackbar('Your message has been submitted. Our team will contact you shortly.', { variant: 'success' });
       setFormData({ name: '', phone: '', email: '', customerType: 'homeowner', message: '' });
     } catch (err) {
-      enqueueSnackbar('Failed to submit message. Please try again.', { variant: 'error' });
+      enqueueSnackbar(getApiErrorMessage(err, 'Failed to submit message. Please try again.'), { variant: 'error' });
     } finally {
       setSubmitting(false);
     }

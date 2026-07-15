@@ -5,6 +5,7 @@ const Quote = require('../models/Quote');
 const Product = require('../models/Product');
 const AppError = require('../utils/AppError');
 const { sendEmail } = require('../config/mailer');
+const whatsapp = require('../config/whatsapp');
 const config = require('../config/env');
 
 class CrmService {
@@ -18,7 +19,14 @@ class CrmService {
       source: 'website',
     });
 
-    await this._notifyAdminOfInquiry(inquiry);
+    // Notifications are best-effort side effects: run them concurrently and
+    // never let a slow/failed email or WhatsApp send delay or break the
+    // response to the person who just submitted the form.
+    Promise.allSettled([
+      this._notifyAdminOfInquiry(inquiry),
+      this._notifyCustomerOfInquiry(inquiry),
+      this._notifyAdminOfInquiryWhatsapp(inquiry),
+    ]);
 
     return inquiry;
   }
@@ -40,6 +48,37 @@ class CrmService {
     });
   }
 
+  /**
+   * WhatsApp confirmation sent to the customer themselves, using the phone
+   * number they submitted on the form — mirrors _notifyAdminOfInquiry but
+   * addressed to the customer rather than the admin inbox.
+   */
+  async _notifyCustomerOfInquiry(inquiry) {
+    const message =
+      `Hi ${inquiry.name}, thank you for reaching out to ${config.company.name}! ` +
+      `We've received your inquiry and our team will contact you shortly. ` +
+      `For urgent help, call us at ${config.company.phone}.`;
+
+    await whatsapp.sendMessage({
+      to: inquiry.phone,
+      message,
+      templateName: config.whatsapp.fallbackTemplate,
+      templateParams: [inquiry.name, config.company.name],
+    });
+  }
+
+  /** WhatsApp alert to the admin's own number, parallel to the admin email above. */
+  async _notifyAdminOfInquiryWhatsapp(inquiry) {
+    if (!config.whatsapp.adminWhatsapp) return;
+    const message =
+      `New inquiry from ${inquiry.name} (${inquiry.phone}).\n` +
+      `Type: ${inquiry.customerType}\n` +
+      `Message: ${inquiry.message}\n` +
+      `View: ${config.clientUrl}/admin/leads/${inquiry._id}`;
+
+    await whatsapp.sendTextMessage({ to: config.whatsapp.adminWhatsapp, message });
+  }
+
   async listAdminInquiries(query) {
     return inquiryRepository.findAdminInquiries(query);
   }
@@ -58,7 +97,12 @@ class CrmService {
       ipAddress: ip,
     });
 
-    await this._notifyAdminOfQuote(quote);
+    // Best-effort side effects — run concurrently, never block the response.
+    Promise.allSettled([
+      this._notifyAdminOfQuote(quote),
+      this._notifyCustomerOfQuote(quote),
+      this._notifyAdminOfQuoteWhatsapp(quote),
+    ]);
 
     return quote;
   }
@@ -77,6 +121,37 @@ class CrmService {
         <p><a href="${config.clientUrl}/admin/quotes/${quote._id}">View in Admin</a></p>
       `,
     });
+  }
+
+  /**
+   * WhatsApp confirmation sent to the customer, mirroring _notifyAdminOfQuote
+   * but addressed to the customer's own number with their quote number so
+   * they have an immediate, trackable reference outside of email.
+   */
+  async _notifyCustomerOfQuote(quote) {
+    const message =
+      `Hi ${quote.name}, thank you for your quote request with ${config.company.name}! ` +
+      `Your reference number is #${quote.quoteNumber} (${quote.items.length} item(s)). ` +
+      `Our team will get back to you within 24 hours. ` +
+      `For urgent help, call us at ${config.company.phone}.`;
+
+    await whatsapp.sendMessage({
+      to: quote.phone,
+      message,
+      templateName: config.whatsapp.fallbackTemplate,
+      templateParams: [quote.name, quote.quoteNumber],
+    });
+  }
+
+  /** WhatsApp alert to the admin's own number, parallel to the admin email above. */
+  async _notifyAdminOfQuoteWhatsapp(quote) {
+    if (!config.whatsapp.adminWhatsapp) return;
+    const message =
+      `New quote request #${quote.quoteNumber} from ${quote.name} (${quote.phone}).\n` +
+      `Items: ${quote.items.length}\n` +
+      `View: ${config.clientUrl}/admin/quotes/${quote._id}`;
+
+    await whatsapp.sendTextMessage({ to: config.whatsapp.adminWhatsapp, message });
   }
 
   async listAdminQuotes(query) {

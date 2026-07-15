@@ -28,7 +28,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SendIcon from '@mui/icons-material/Send';
 import { useSelector, useDispatch } from 'react-redux';
 import { cartItemsList, clearCart, updateQuantity, removeItem } from '../../store/cartSlice';
-import { quotesAPI } from '../../services/api';
+import { quotesAPI, getApiErrorMessage } from '../../services/api';
 import { useSnackbar } from 'notistack';
 
 const STEPS = ['Select Items & Quantities', 'Project Location & Details', 'Submit Contact Info'];
@@ -111,7 +111,7 @@ export default function QuoteRequestPage() {
       dispatch(clearCart());
       router.push('/products');
     } catch (err) {
-      enqueueSnackbar('Failed to submit quote request.', { variant: 'error' });
+      enqueueSnackbar(getApiErrorMessage(err, 'Failed to submit quote request.'), { variant: 'error' });
     } finally {
       setSubmitting(false);
     }
