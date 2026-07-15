@@ -33,6 +33,23 @@ import { useSnackbar } from 'notistack';
 
 const STEPS = ['Select Items & Quantities', 'Project Location & Details', 'Submit Contact Info'];
 
+/**
+ * Computes a single cart item's line total, honoring whether the product's
+ * price is quoted "per piece" or "per 1000" units — using the wrong
+ * multiplier for a "per piece" product previously produced totals that were
+ * 1000x too small (e.g. ₹28 instead of ₹28,000 for 1000 pieces @ ₹28/pc).
+ */
+function computeLineTotal(item: any): number {
+  const unitPrice = item.product?.pricing?.retail || 0;
+  const isPerThousand = (item.product?.pricing?.unit || '').toLowerCase().includes('1000');
+  const multiplier = isPerThousand ? item.quantity / 1000 : item.quantity;
+  return unitPrice * multiplier;
+}
+
+function formatInr(amount: number): string {
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+}
+
 export default function QuoteRequestPage() {
   const theme = useTheme();
   const router = useRouter();
@@ -85,6 +102,23 @@ export default function QuoteRequestPage() {
     }
     setSubmitting(true);
     try {
+      // Price is per-piece for some products (e.g. "₹28 / per piece") and
+      // per-1000-units for others (e.g. "₹6,500 / per 1000 bricks") — the
+      // multiplier MUST match pricing.unit, or a per-piece product's total
+      // silently comes out 1000x too small (e.g. 1000 pcs @ ₹28/piece was
+      // computing ₹28 instead of ₹28,000).
+      const itemsWithTotals = cartItems.map((item: any) => ({
+        product: item.product._id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        unit: item.product.pricing?.unit || 'pieces',
+        priceType: 'retail', // default
+        unitPrice: item.product.pricing?.retail || 0,
+        totalPrice: computeLineTotal(item),
+      }));
+
+      const grandTotal = itemsWithTotals.reduce((sum, item) => sum + item.totalPrice, 0);
+
       const payload = {
         name: contactDetails.name,
         phone: contactDetails.phone,
@@ -93,21 +127,20 @@ export default function QuoteRequestPage() {
         projectLocation: locationDetails.projectLocation,
         projectType: locationDetails.projectType,
         notes: locationDetails.notes,
-        items: cartItems.map((item: any) => ({
-          product: item.product._id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          unit: item.product.pricing?.unit || 'pieces',
-          priceType: 'retail', // default
-          unitPrice: item.product.pricing?.retail || 0,
-          totalPrice: (item.product.pricing?.retail || 0) * (item.quantity / 1000),
-        })),
-        subtotal: cartItems.reduce((sum, item: any) => sum + (item.product.pricing?.retail || 0) * (item.quantity / 1000), 0),
-        totalEstimate: cartItems.reduce((sum, item: any) => sum + (item.product.pricing?.retail || 0) * (item.quantity / 1000), 0),
+        items: itemsWithTotals,
+        subtotal: grandTotal,
+        totalEstimate: grandTotal,
       };
 
       const res = await quotesAPI.submit(payload);
-      enqueueSnackbar(`Quote request #${res.data.data.quoteNumber} submitted successfully!`, { variant: 'success' });
+      // The quote object is nested at data.data.quote (not data.data
+      // directly) — reading quoteNumber one level too shallow is what
+      // produced the "#undefined" toast.
+      const quoteNumber = res.data?.data?.quote?.quoteNumber;
+      enqueueSnackbar(
+        quoteNumber ? `Quote request #${quoteNumber} submitted successfully!` : 'Quote request submitted successfully!',
+        { variant: 'success' },
+      );
       dispatch(clearCart());
       router.push('/products');
     } catch (err) {
@@ -153,33 +186,56 @@ export default function QuoteRequestPage() {
               </Box>
             ) : (
               <List disablePadding>
-                {cartItems.map((item: any) => (
-                  <Card key={item.product._id} variant="outlined" sx={{ mb: 2, borderRadius: 2, '&:hover': { transform: 'none' } }}>
-                    <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '16px !important' }}>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                          {item.product.name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                          Type: {item.product.specs?.type || 'Standard'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <TextField
-                          type="number"
-                          label="Quantity"
-                          value={item.quantity}
-                          onChange={(e) => dispatch(updateQuantity({ id: item.product._id, quantity: parseInt(e.target.value) || 0 }))}
-                          sx={{ width: 120 }}
-                          InputProps={{ inputProps: { min: 1000, step: 1000 } }}
-                        />
-                        <IconButton color="error" onClick={() => dispatch(removeItem(item.product._id))}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
+                {cartItems.map((item: any) => {
+                  const isPerThousand = (item.product.pricing?.unit || '').toLowerCase().includes('1000');
+                  const step = isPerThousand ? 1000 : 1;
+                  const lineTotal = computeLineTotal(item);
+
+                  return (
+                    <Card key={item.product._id} variant="outlined" sx={{ mb: 2, borderRadius: 2, '&:hover': { transform: 'none' } }}>
+                      <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '16px !important', flexWrap: 'wrap', gap: 2 }}>
+                        <Box>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                            {item.product.name}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block' }}>
+                            Type: {item.product.specs?.type || 'Standard'}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                            ₹{(item.product.pricing?.retail || 0).toLocaleString('en-IN')} / {item.product.pricing?.unit || 'unit'}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <TextField
+                            type="number"
+                            label="Quantity"
+                            value={item.quantity}
+                            onChange={(e) => dispatch(updateQuantity({ id: item.product._id, quantity: parseInt(e.target.value) || 0 }))}
+                            sx={{ width: 120 }}
+                            InputProps={{ inputProps: { min: step, step } }}
+                          />
+                          <Box sx={{ textAlign: 'right', minWidth: 90 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                              {formatInr(lineTotal)}
+                            </Typography>
+                          </Box>
+                          <IconButton color="error" onClick={() => dispatch(removeItem(item.product._id))}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+                <Divider sx={{ my: 2 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: 1.5 }}>
+                  <Typography variant="body1" sx={{ color: theme.palette.text.secondary }}>
+                    Estimated Total:
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    {formatInr(cartItems.reduce((sum: number, item: any) => sum + computeLineTotal(item), 0))}
+                  </Typography>
+                </Box>
               </List>
             )}
           </Box>
@@ -286,7 +342,14 @@ export default function QuoteRequestPage() {
             </Typography>
             <Box sx={{ bgcolor: '#fdf8f3', p: 3, borderRadius: 2 }}>
               <Typography variant="body2" sx={{ mb: 1 }}><strong>Total unique items:</strong> {cartItems.length}</Typography>
-              <Typography variant="body2"><strong>Delivery destination:</strong> {locationDetails.projectLocation}</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}><strong>Delivery destination:</strong> {locationDetails.projectLocation}</Typography>
+              <Divider sx={{ my: 1.5 }} />
+              <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                Estimated Total: {formatInr(cartItems.reduce((sum: number, item: any) => sum + computeLineTotal(item), 0))}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                Final pricing will be confirmed by our team based on delivery location and current stock.
+              </Typography>
             </Box>
           </Box>
         )}

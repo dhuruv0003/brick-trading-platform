@@ -309,39 +309,63 @@ export default function ProductsPage() {
           ) : (
             <>
               <Box sx={{ flexGrow: 1, overflowY: 'auto', mb: 3 }}>
-                {cartItems.map((item: any) => (
-                  <Box key={item.product._id} sx={{ mb: 3, borderBottom: '1px solid #f5f5f4', pb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-                      {item.product.name}
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {cartItems.map((item: any) => {
+                  const isPerThousand = (item.product.pricing?.unit || '').toLowerCase().includes('1000');
+                  const step = isPerThousand ? 1000 : 1;
+                  const unitPrice = item.product.pricing?.retail || 0;
+                  const lineTotal = isPerThousand ? unitPrice * (item.quantity / 1000) : unitPrice * item.quantity;
+
+                  return (
+                    <Box key={item.product._id} sx={{ mb: 3, borderBottom: '1px solid #f5f5f4', pb: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                        {item.product.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => dispatch(updateQuantity({ id: item.product._id, quantity: Math.max(step, item.quantity - step) }))}
+                          >
+                            <RemoveIcon />
+                          </IconButton>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {item.quantity.toLocaleString()} pcs
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={() => dispatch(updateQuantity({ id: item.product._id, quantity: item.quantity + step }))}
+                          >
+                            <AddIcon />
+                          </IconButton>
+                        </Box>
                         <IconButton
                           size="small"
-                          onClick={() => dispatch(updateQuantity({ id: item.product._id, quantity: item.quantity - 1000 }))}
+                          color="error"
+                          onClick={() => dispatch(removeItem(item.product._id))}
                         >
-                          <RemoveIcon />
-                        </IconButton>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {item.quantity.toLocaleString()} pcs
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => dispatch(updateQuantity({ id: item.product._id, quantity: item.quantity + 1000 }))}
-                        >
-                          <AddIcon />
+                          <DeleteIcon />
                         </IconButton>
                       </Box>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => dispatch(removeItem(item.product._id))}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 700, color: theme.palette.primary.main }}>
+                        ₹{Math.round(lineTotal).toLocaleString('en-IN')}
+                      </Typography>
                     </Box>
-                  </Box>
-                ))}
+                  );
+                })}
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 2, px: 0.5 }}>
+                <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                  Estimated Total
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                  ₹{Math.round(
+                    cartItems.reduce((sum: number, item: any) => {
+                      const isPerThousand = (item.product.pricing?.unit || '').toLowerCase().includes('1000');
+                      const unitPrice = item.product.pricing?.retail || 0;
+                      return sum + (isPerThousand ? unitPrice * (item.quantity / 1000) : unitPrice * item.quantity);
+                    }, 0),
+                  ).toLocaleString('en-IN')}
+                </Typography>
               </Box>
               <Box sx={{ pt: 2 }}>
                 <Button component={Link} href="/quote" variant="contained" fullWidth size="large" onClick={() => dispatch(toggleCart())}>

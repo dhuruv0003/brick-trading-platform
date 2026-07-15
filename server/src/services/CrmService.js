@@ -4,7 +4,7 @@ const Inquiry = require('../models/Inquiry');
 const Quote = require('../models/Quote');
 const Product = require('../models/Product');
 const AppError = require('../utils/AppError');
-const { sendEmail } = require('../config/mailer');
+const { sendEmail, renderEmailTemplate } = require('../config/mailer');
 const whatsapp = require('../config/whatsapp');
 const config = require('../config/env');
 
@@ -24,6 +24,7 @@ class CrmService {
     // response to the person who just submitted the form.
     Promise.allSettled([
       this._notifyAdminOfInquiry(inquiry),
+      this._notifyCustomerOfInquiryEmail(inquiry),
       this._notifyCustomerOfInquiry(inquiry),
       this._notifyAdminOfInquiryWhatsapp(inquiry),
     ]);
@@ -36,15 +37,44 @@ class CrmService {
     await sendEmail({
       to: config.email.adminEmail,
       subject: `New Inquiry from ${inquiry.name}`,
-      html: `
-        <h2>New Inquiry Received</h2>
-        <p><strong>Name:</strong> ${inquiry.name}</p>
-        <p><strong>Phone:</strong> ${inquiry.phone}</p>
-        <p><strong>Email:</strong> ${inquiry.email || 'N/A'}</p>
-        <p><strong>Customer Type:</strong> ${inquiry.customerType}</p>
-        <p><strong>Message:</strong> ${inquiry.message}</p>
-        <p><a href="${config.clientUrl}/admin/leads/${inquiry._id}">View in Admin</a></p>
-      `,
+      html: renderEmailTemplate({
+        heading: 'New Inquiry Received',
+        rows: [
+          { label: 'Name', value: inquiry.name },
+          { label: 'Phone', value: inquiry.phone },
+          { label: 'Email', value: inquiry.email || 'N/A' },
+          { label: 'Customer Type', value: inquiry.customerType },
+          { label: 'Message', value: inquiry.message },
+        ],
+        footerNote: `<a href="${config.clientUrl}/admin/leads/${inquiry._id}" style="color:#c2410c;">View in Admin →</a>`,
+      }),
+    });
+  }
+
+  /**
+   * Confirmation email sent to the customer's own address (the one they
+   * typed into the form) — separate from the admin alert above. Skipped
+   * silently if the customer didn't provide an email, since it's an
+   * optional field on the inquiry form.
+   */
+  async _notifyCustomerOfInquiryEmail(inquiry) {
+    if (!inquiry.email) return;
+    await sendEmail({
+      to: inquiry.email,
+      subject: `We've received your inquiry — ${config.company.name}`,
+      html: renderEmailTemplate({
+        heading: `Thanks for reaching out, ${inquiry.name}!`,
+        intro:
+          `We've received your inquiry and our team will get back to you shortly. ` +
+          `Here's a copy of what you submitted for your records:`,
+        rows: [
+          { label: 'Name', value: inquiry.name },
+          { label: 'Phone', value: inquiry.phone },
+          { label: 'Customer Type', value: inquiry.customerType },
+          { label: 'Message', value: inquiry.message },
+        ],
+        footerNote: `Need urgent help? Call us at ${config.company.phone}. — ${config.company.name}`,
+      }),
     });
   }
 
@@ -100,6 +130,7 @@ class CrmService {
     // Best-effort side effects — run concurrently, never block the response.
     Promise.allSettled([
       this._notifyAdminOfQuote(quote),
+      this._notifyCustomerOfQuoteEmail(quote),
       this._notifyCustomerOfQuote(quote),
       this._notifyAdminOfQuoteWhatsapp(quote),
     ]);
@@ -112,14 +143,49 @@ class CrmService {
     await sendEmail({
       to: config.email.adminEmail,
       subject: `New Quote Request #${quote.quoteNumber}`,
-      html: `
-        <h2>New Quote Request</h2>
-        <p><strong>Quote #:</strong> ${quote.quoteNumber}</p>
-        <p><strong>Name:</strong> ${quote.name}</p>
-        <p><strong>Phone:</strong> ${quote.phone}</p>
-        <p><strong>Items:</strong> ${quote.items.length} item(s)</p>
-        <p><a href="${config.clientUrl}/admin/quotes/${quote._id}">View in Admin</a></p>
-      `,
+      html: renderEmailTemplate({
+        heading: 'New Quote Request',
+        rows: [
+          { label: 'Quote #', value: quote.quoteNumber },
+          { label: 'Name', value: quote.name },
+          { label: 'Phone', value: quote.phone },
+          { label: 'Email', value: quote.email || 'N/A' },
+          { label: 'Items', value: `${quote.items.length} item(s)` },
+          { label: 'Total Estimate', value: `₹${(quote.totalEstimate || 0).toLocaleString('en-IN')}` },
+        ],
+        footerNote: `<a href="${config.clientUrl}/admin/quotes/${quote._id}" style="color:#c2410c;">View in Admin →</a>`,
+      }),
+    });
+  }
+
+  /**
+   * Confirmation email sent to the customer's own address with a full
+   * itemized breakdown of what they requested — skipped silently if they
+   * didn't provide an email (it's optional on the quote form).
+   */
+  async _notifyCustomerOfQuoteEmail(quote) {
+    if (!quote.email) return;
+
+    const itemRows = quote.items.map((item) => ({
+      label: item.productName || 'Item',
+      value: `${item.quantity} ${item.unit || ''} × ₹${(item.unitPrice || 0).toLocaleString('en-IN')} = ₹${(item.totalPrice || 0).toLocaleString('en-IN')}`,
+    }));
+
+    await sendEmail({
+      to: quote.email,
+      subject: `Your quote request #${quote.quoteNumber} — ${config.company.name}`,
+      html: renderEmailTemplate({
+        heading: `Thanks for your quote request, ${quote.name}!`,
+        intro:
+          `Your reference number is <strong>#${quote.quoteNumber}</strong>. ` +
+          `Our team will review it and get back to you within 24 hours. Here's a summary:`,
+        rows: [
+          ...itemRows,
+          { label: 'Total Estimate', value: `<strong>₹${(quote.totalEstimate || 0).toLocaleString('en-IN')}</strong>` },
+          { label: 'Delivery Location', value: quote.projectLocation },
+        ],
+        footerNote: `Need urgent help? Call us at ${config.company.phone}. — ${config.company.name}`,
+      }),
     });
   }
 
