@@ -1,116 +1,222 @@
-const nodemailer = require('nodemailer');
-const config = require('./env');
-const logger = require('../utils/logger');
+const axios = require("axios");
+const config = require("./env");
+const logger = require("../utils/logger");
 
-let transporter = null;
-let verified = false;
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+const REQUEST_TIMEOUT = 10000;
 
-const getTransporter = () => {
-  if (!transporter && config.email.user && config.email.pass) {
-    transporter = nodemailer.createTransport({
-      host: config.email.host,
-      port: config.email.port,
-      // Port 465 requires implicit TLS (secure: true); 587/25 use STARTTLS
-      // (secure: false, upgraded automatically by nodemailer). Hardcoding
-      // this to false previously broke any provider configured on 465
-      // (e.g. some Gmail/Zoho/Office365 setups) — the connection would
-      // fail silently with only a server-log entry, never surfaced anywhere.
-      secure: config.email.port === 465,
-      auth: {
-        user: config.email.user,
-        pass: config.email.pass,
-      },
-    });
+let isConfiguredLogged = false;
 
-    // Verify the SMTP connection once at startup so a bad host/port/
-    // credential combination shows up clearly in the server logs
-    // immediately, instead of only failing (silently, per-request) the
-    // first time a customer submits a form.
-    if (!verified) {
-      verified = true;
-      transporter.verify((error) => {
-        if (error) {
-          logger.error(`SMTP connection verification failed — emails will NOT send: ${error.message}`);
-        } else {
-          logger.info('SMTP connection verified — ready to send emails.');
-        }
-      });
-    }
-  }
-  return transporter;
-};
+/**
+ * Validate Brevo configuration
+ */
+const validateConfiguration = () => {
+  const missing = [];
 
-const sendEmail = async ({ to, subject, html, text }) => {
-  if (!to) {
-    logger.warn(`Email send skipped for "${subject}" — no recipient address provided`);
-    return;
-  }
+  if (!config.brevo?.apiKey) missing.push("BREVO_API_KEY");
+  if (!config.brevo?.senderEmail) missing.push("BREVO_SENDER_EMAIL");
 
-  const t = getTransporter();
-  if (!t) {
-    logger.warn(
-      `Email transporter not configured — skipping email "${subject}" to ${to}. ` +
-      'Set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS to enable email sending.',
+  if (missing.length) {
+    throw new Error(
+      `Missing Brevo configuration: ${missing.join(", ")}`
     );
-    return;
-  }
-  try {
-    const info = await t.sendMail({
-      from: config.email.from || config.email.user,
-      to,
-      subject,
-      html,
-      text,
-    });
-    logger.info(`Email sent to ${to}: ${info.messageId}`);
-    return info;
-  } catch (error) {
-    logger.error(`Email send error (to ${to}, subject "${subject}"): ${error.message}`);
   }
 };
 
 /**
- * Shared branded HTML wrapper so every transactional email (customer
- * confirmations, admin alerts) looks consistent rather than being raw,
- * unstyled fragments assembled ad-hoc at each call site.
+ * Convert email(s) into Brevo recipient format
  */
-const renderEmailTemplate = ({ heading, intro, rows = [], footerNote }) => {
-  const rowsHtml = rows
-    .filter((r) => r.value !== undefined && r.value !== null && r.value !== '')
-    .map(
-      (r) => `
-        <tr>
-          <td style="padding:10px 16px;border-bottom:1px solid #f0e9e4;color:#78716c;font-size:13px;width:160px;vertical-align:top;">${r.label}</td>
-          <td style="padding:10px 16px;border-bottom:1px solid #f0e9e4;color:#1c1917;font-size:14px;vertical-align:top;">${r.value}</td>
-        </tr>`,
-    )
-    .join('');
+const formatRecipients = (emails) => {
+  if (!emails) return [];
 
-  return `
-  <div style="background-color:#f5f2ef;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
-    <table role="presentation" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e0da;">
-      <tr>
-        <td style="background-color:#c2410c;padding:20px 24px;">
-          <span style="color:#ffffff;font-size:20px;font-weight:bold;">BrickPro</span>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:28px 24px 8px 24px;">
-          <h2 style="margin:0 0 12px 0;color:#1c1917;font-size:19px;">${heading}</h2>
-          ${intro ? `<p style="margin:0 0 20px 0;color:#44403c;font-size:14px;line-height:1.6;">${intro}</p>` : ''}
-        </td>
-      </tr>
-      ${rowsHtml ? `<tr><td style="padding:0 8px 8px 8px;"><table role="presentation" style="width:100%;border-collapse:collapse;">${rowsHtml}</table></td></tr>` : ''}
-      <tr>
-        <td style="padding:20px 24px 28px 24px;">
-          <p style="margin:0;color:#78716c;font-size:12px;line-height:1.6;">
-            ${footerNote || `${config.company.name || 'BrickPro'} · ${config.company.phone || ''} · ${config.company.email || ''}`}
-          </p>
-        </td>
-      </tr>
-    </table>
-  </div>`;
+  const recipients = Array.isArray(emails) ? emails : [emails];
+
+  return recipients
+    .filter(Boolean)
+    .map((email) => ({ email }));
 };
 
-module.exports = { sendEmail, renderEmailTemplate };
+/**
+ * Send email using Brevo Transactional API
+ */
+const sendEmail = async ({
+  to,
+  cc,
+  bcc,
+  subject,
+  html,
+  text,
+  replyTo,
+}) => {
+  try {
+    validateConfiguration();
 
+    const recipients = formatRecipients(to);
+
+    if (!recipients.length) {
+      throw new Error("No recipient email address provided.");
+    }
+
+    if (!isConfiguredLogged) {
+      logger.info(
+        "Brevo transactional email configured successfully."
+      );
+      isConfiguredLogged = true;
+    }
+
+    const payload = {
+      sender: {
+        email: config.brevo.senderEmail,
+        name: config.brevo.senderName || "BrickPro",
+      },
+      to: recipients,
+      subject,
+      htmlContent: html,
+    };
+
+    if (text) payload.textContent = text;
+
+    if (cc) payload.cc = formatRecipients(cc);
+
+    if (bcc) payload.bcc = formatRecipients(bcc);
+
+    if (replyTo) {
+      payload.replyTo = {
+        email: replyTo,
+      };
+    }
+
+    const response = await axios.post(
+      BREVO_API_URL,
+      payload,
+      {
+        timeout: REQUEST_TIMEOUT,
+        headers: {
+          "api-key": config.brevo.apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
+
+    logger.info(
+      `Email sent successfully to ${recipients
+        .map((r) => r.email)
+        .join(", ")}`
+    );
+
+    return {
+      success: true,
+      messageId: response.data.messageId,
+    };
+  } catch (error) {
+    const status = error.response?.status;
+    const data = error.response?.data;
+
+    logger.error({
+      message: "Brevo email send failed",
+      status,
+      error: data || error.message,
+    });
+
+    return {
+      success: false,
+      error:
+        data?.message ||
+        error.message ||
+        "Unknown email error",
+    };
+  }
+};
+
+/**
+ * Common HTML email template
+ */
+const renderEmailTemplate = ({
+  heading,
+  intro,
+  rows = [],
+  footerNote,
+}) => {
+  const rowsHtml = rows
+    .filter(
+      ({ value }) =>
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+    )
+    .map(
+      ({ label, value }) => `
+      <tr>
+        <td style="padding:10px 16px;border-bottom:1px solid #f0e9e4;color:#78716c;font-size:13px;width:160px;">
+          ${label}
+        </td>
+        <td style="padding:10px 16px;border-bottom:1px solid #f0e9e4;color:#1c1917;font-size:14px;">
+          ${value}
+        </td>
+      </tr>`
+    )
+    .join("");
+
+  return `
+<div style="background:#f5f2ef;padding:32px 16px;font-family:Arial,sans-serif;">
+  <table role="presentation"
+         style="max-width:560px;margin:auto;background:#fff;border-radius:12px;border:1px solid #e7e0da;border-collapse:collapse;">
+    
+    <tr>
+      <td style="background:#c2410c;padding:20px 24px;">
+        <span style="color:#fff;font-size:20px;font-weight:bold;">
+          ${config.company.name || "BrickPro"}
+        </span>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:28px 24px;">
+        <h2 style="margin:0 0 12px;color:#1c1917;">
+          ${heading}
+        </h2>
+
+        ${
+          intro
+            ? `<p style="margin:0;color:#44403c;line-height:1.6;">
+                ${intro}
+              </p>`
+            : ""
+        }
+      </td>
+    </tr>
+
+    ${
+      rowsHtml
+        ? `
+    <tr>
+      <td style="padding:0 8px 16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          ${rowsHtml}
+        </table>
+      </td>
+    </tr>`
+        : ""
+    }
+
+    <tr>
+      <td style="padding:20px 24px;color:#78716c;font-size:12px;">
+        ${
+          footerNote ||
+          `${config.company.name || "BrickPro"}
+          ${config.company.phone ? ` • ${config.company.phone}` : ""}
+          ${config.company.email ? ` • ${config.company.email}` : ""}`
+        }
+      </td>
+    </tr>
+
+  </table>
+</div>
+`;
+};
+
+module.exports = {
+  sendEmail,
+  renderEmailTemplate,
+};

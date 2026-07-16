@@ -21,12 +21,17 @@ module.exports = {
     cookieExpiresIn: parseInt(process.env.JWT_COOKIE_EXPIRES_IN) || 7,
   },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  // Email is sent via Brevo's HTTP API (see src/config/mailer.js), not SMTP —
+  // Render's free tier blocks outbound SMTP ports, but HTTPS works fine.
+  brevo: {
+    apiKey: process.env.BREVO_API_KEY,
+    // Must be a sender you've verified in your Brevo account.
+    senderEmail: process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_FROM,
+    senderName: process.env.BREVO_SENDER_NAME || process.env.COMPANY_NAME || 'BrickPro',
+  },
+  // Kept for the admin-notification recipient address (ADMIN_EMAIL is still
+  // just a plain "to" address, unrelated to how the email gets sent).
   email: {
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-    from: process.env.EMAIL_FROM,
     adminEmail: process.env.ADMIN_EMAIL,
   },
   whatsapp: {
