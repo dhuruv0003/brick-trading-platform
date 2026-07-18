@@ -30,6 +30,7 @@ import RateReviewIcon from '@mui/icons-material/RateReview';
 import HelpIcon from '@mui/icons-material/Help';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import PeopleIcon from '@mui/icons-material/People';
 import SettingsIcon from '@mui/icons-material/Settings';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -49,6 +50,7 @@ const NAV = [
   { label: 'FAQs', path: '/admin/faqs', icon: <HelpIcon />, roles: ['super_admin', 'admin', 'manager'] },
   { label: 'Leads', path: '/admin/leads', icon: <ContactMailIcon />, roles: ['super_admin', 'admin', 'manager', 'staff'] },
   { label: 'Quotes', path: '/admin/quotes', icon: <RequestQuoteIcon />, roles: ['super_admin', 'admin', 'manager', 'staff'] },
+  { label: 'Orders', path: '/admin/orders', icon: <ShoppingBagIcon />, roles: ['super_admin', 'admin', 'manager', 'staff'] },
   { label: 'Users', path: '/admin/users', icon: <PeopleIcon />, roles: ['super_admin', 'admin'] },
   { label: 'Settings', path: '/admin/settings', icon: <SettingsIcon />, roles: ['super_admin', 'admin'] },
 ];

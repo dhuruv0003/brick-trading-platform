@@ -10,6 +10,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import PersonIcon from '@mui/icons-material/Person';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { ordersAPI } from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 import ResponsiveDataView from '../../../components/common/ResponsiveDataView';
@@ -87,6 +88,9 @@ export default function CustomerDashboardPage() {
           </Button>
           <Button variant="outlined" startIcon={<ListAltIcon />} onClick={() => router.push('/account/orders')} fullWidth>
             View Orders
+          </Button>
+          <Button variant="outlined" startIcon={<ReceiptLongIcon />} onClick={() => router.push('/account/invoices')} fullWidth>
+            Invoices
           </Button>
           <Button variant="outlined" startIcon={<PersonIcon />} onClick={() => router.push('/account/profile')} fullWidth>
             Edit Profile

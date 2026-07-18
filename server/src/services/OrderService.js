@@ -4,6 +4,8 @@ const AppError = require('../utils/AppError');
 const { sendEmail, renderEmailTemplate } = require('../config/mailer');
 const whatsapp = require('../config/whatsapp');
 const config = require('../config/env');
+const invoiceService = require('./InvoiceService');
+const logger = require('../utils/logger');
 
 // Human-friendly labels for the tracking timeline — deliberately plain
 // language (no "fulfillment"/"dispatch queue" jargon) since this app is
@@ -113,6 +115,17 @@ class OrderService {
   async getCustomerOrder(orderId, customerId) {
     const order = await orderRepository.findByIdForCustomer(orderId, customerId);
     if (!order) throw new AppError('Order not found.', 404);
+
+    // The invoice may already exist on the order (generated at dispatch,
+    // for the admin's benefit) before the customer is meant to see it.
+    // Strip it from the response entirely until "delivered" so there's no
+    // way to obtain the link early via the API, not just via the UI.
+    if (order.status !== 'delivered' && order.invoice?.fileUrl) {
+      const sanitized = order.toObject();
+      sanitized.invoice = undefined;
+      return sanitized;
+    }
+
     return order;
   }
 
@@ -158,6 +171,22 @@ class OrderService {
     }
     const order = await orderRepository.appendStatusUpdate(orderId, { status, note }, adminUserId);
     if (!order) throw new AppError('Order not found.', 404);
+
+    // Invoice is generated the moment an order is dispatched — this makes
+    // it available to admin right away. Customers only ever see it once
+    // the order reaches "delivered" (enforced in the customer-facing
+    // getCustomerOrder/getCustomerInvoices queries below, not here), even
+    // though the file itself already exists on the order by then.
+    if (status === 'out_for_delivery' && !order.invoice?.fileUrl) {
+      try {
+        order.invoice = await invoiceService.generate(order);
+        await order.save();
+      } catch (err) {
+        // Never let invoice generation failure block the status update
+        // itself — the order has still genuinely been dispatched.
+        logger.error(`Invoice generation failed for order ${order.orderNumber}: ${err.message}`);
+      }
+    }
 
     Promise.allSettled([this._notifyCustomerOfStatusChange(order)]);
 

@@ -1,14 +1,14 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Paper, TextField, InputAdornment, Table, TableHead, TableBody, TableRow,
-  TableCell, Chip, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions,
-  Grid2 as Grid, MenuItem, TablePagination, Tooltip, Button, Stack, Divider,
+  Box, Typography, Paper, TextField, InputAdornment, Chip, IconButton, Dialog, DialogTitle,
+  DialogContent, DialogActions, Grid2 as Grid, MenuItem, TablePagination, Tooltip, Button, Stack, Divider,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { quotesAPI } from '../../../services/api';
 import useAdminResource from '../../../hooks/useAdminResource';
+import ResponsiveDataView from '../../../components/common/ResponsiveDataView';
 
 const STATUS_OPTIONS = ['pending', 'processing', 'sent', 'accepted', 'rejected', 'expired'];
 const STATUS_COLORS: Record<string, any> = { pending: 'info', processing: 'warning', sent: 'secondary', accepted: 'success', rejected: 'error', expired: 'default' };
@@ -52,44 +52,33 @@ export default function AdminQuotesPage() {
             size="small"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            sx={{ maxWidth: 320 }}
+            sx={{ maxWidth: 320, width: '100%' }}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
           />
         </Box>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Quote #</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Items</TableCell>
-              <TableCell>Estimate</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading && Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}><TableCell colSpan={6}><Skeleton height={36} /></TableCell></TableRow>
-            ))}
-            {!isLoading && quotes.length === 0 && (
-              <TableRow><TableCell colSpan={6}>
-                <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>No quote requests yet.</Typography>
-              </TableCell></TableRow>
-            )}
-            {quotes.map((q: any) => (
-              <TableRow key={q._id} hover>
-                <TableCell>{q.quoteNumber}</TableCell>
-                <TableCell>{q.name}</TableCell>
-                <TableCell>{q.items?.length ?? 0}</TableCell>
-                <TableCell>₹{q.totalEstimate ?? 0}</TableCell>
-                <TableCell><Chip size="small" label={q.status} color={STATUS_COLORS[q.status] || 'default'} sx={{ textTransform: 'capitalize' }} /></TableCell>
-                <TableCell align="right">
-                  <Tooltip title="View / Update"><IconButton size="small" onClick={() => openDetail(q)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+
+        <ResponsiveDataView
+          isLoading={isLoading}
+          rows={quotes}
+          rowKey={(q: any) => q._id}
+          onRowClick={openDetail}
+          emptyMessage="No quote requests yet."
+          renderMobileTitle={(q: any) => q.quoteNumber}
+          renderMobileSubtitle={(q: any) => q.name}
+          renderActions={(q: any) => (
+            <Tooltip title="View / Update">
+              <IconButton size="small" onClick={() => openDetail(q)}><VisibilityIcon fontSize="small" /></IconButton>
+            </Tooltip>
+          )}
+          columns={[
+            { key: 'quoteNumber', label: 'Quote #' },
+            { key: 'name', label: 'Name' },
+            { key: 'items', label: 'Items', render: (q: any) => q.items?.length ?? 0 },
+            { key: 'totalEstimate', label: 'Estimate', render: (q: any) => `₹${q.totalEstimate ?? 0}` },
+            { key: 'status', label: 'Status', render: (q: any) => <Chip size="small" label={q.status} color={STATUS_COLORS[q.status] || 'default'} sx={{ textTransform: 'capitalize' }} /> },
+          ]}
+        />
+
         <TablePagination
           component="div"
           count={meta?.total ?? 0}

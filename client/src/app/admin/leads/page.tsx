@@ -1,14 +1,14 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Paper, TextField, InputAdornment, Table, TableHead, TableBody, TableRow,
-  TableCell, Chip, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions,
-  Grid2 as Grid, MenuItem, TablePagination, Tooltip, Button, Stack, Divider,
+  Box, Typography, Paper, TextField, InputAdornment, Chip, IconButton, Dialog, DialogTitle,
+  DialogContent, DialogActions, Grid2 as Grid, MenuItem, TablePagination, Tooltip, Button, Stack, Divider,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { inquiriesAPI } from '../../../services/api';
 import useAdminResource from '../../../hooks/useAdminResource';
+import ResponsiveDataView from '../../../components/common/ResponsiveDataView';
 
 const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'converted', 'closed', 'spam'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'];
@@ -62,40 +62,27 @@ export default function AdminLeadsPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
           />
         </Box>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Priority</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading && Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}><TableCell colSpan={6}><Skeleton height={36} /></TableCell></TableRow>
-            ))}
-            {!isLoading && leads.length === 0 && (
-              <TableRow><TableCell colSpan={6}>
-                <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>No leads yet.</Typography>
-              </TableCell></TableRow>
-            )}
-            {leads.map((l: any) => (
-              <TableRow key={l._id} hover>
-                <TableCell>{l.name}</TableCell>
-                <TableCell>{l.phone}</TableCell>
-                <TableCell sx={{ textTransform: 'capitalize' }}>{l.customerType?.replace('_', ' ')}</TableCell>
-                <TableCell sx={{ textTransform: 'capitalize' }}>{l.priority}</TableCell>
-                <TableCell><Chip size="small" label={l.status} color={STATUS_COLORS[l.status] || 'default'} sx={{ textTransform: 'capitalize' }} /></TableCell>
-                <TableCell align="right">
-                  <Tooltip title="View / Update"><IconButton size="small" onClick={() => openDetail(l)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ResponsiveDataView
+          isLoading={isLoading}
+          rows={leads}
+          rowKey={(l: any) => l._id}
+          onRowClick={openDetail}
+          emptyMessage="No leads yet."
+          renderMobileTitle={(l: any) => l.name}
+          renderMobileSubtitle={(l: any) => l.phone}
+          renderActions={(l: any) => (
+            <Tooltip title="View / Update">
+              <IconButton size="small" onClick={() => openDetail(l)}><VisibilityIcon fontSize="small" /></IconButton>
+            </Tooltip>
+          )}
+          columns={[
+            { key: 'name', label: 'Name' },
+            { key: 'phone', label: 'Phone' },
+            { key: 'customerType', label: 'Type', render: (l: any) => <span style={{ textTransform: 'capitalize' }}>{l.customerType?.replace('_', ' ')}</span> },
+            { key: 'priority', label: 'Priority', render: (l: any) => <span style={{ textTransform: 'capitalize' }}>{l.priority}</span> },
+            { key: 'status', label: 'Status', render: (l: any) => <Chip size="small" label={l.status} color={STATUS_COLORS[l.status] || 'default'} sx={{ textTransform: 'capitalize' }} /> },
+          ]}
+        />
         <TablePagination
           component="div"
           count={meta?.total ?? 0}
