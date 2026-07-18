@@ -1,6 +1,26 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// One saved delivery address. Soft-deleted (isDeleted flag) rather than
+// removed outright, matching this project's existing soft-delete
+// convention elsewhere (e.g. isActive flags on Product/Category), so an
+// address referenced by a past order's snapshot is never actually lost
+// from the customer's account history.
+const addressSchema = new mongoose.Schema(
+  {
+    label: { type: String, default: 'Home', trim: true }, // e.g. "Home", "Site Office"
+    line1: { type: String, required: [true, 'Address line is required'], trim: true },
+    line2: { type: String, trim: true },
+    city: { type: String, required: [true, 'City is required'], trim: true },
+    state: { type: String, required: [true, 'State is required'], trim: true },
+    pincode: { type: String, required: [true, 'Pincode is required'], trim: true },
+    phone: { type: String, required: [true, 'Phone number is required'], trim: true },
+    isDefault: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -25,8 +45,23 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['super_admin', 'admin', 'manager', 'staff'],
+      enum: ['super_admin', 'admin', 'manager', 'staff', 'customer'],
       default: 'staff',
+    },
+    // Customer-only fields below. Left undefined/empty for staff accounts —
+    // nothing here is required at the schema level so it can't break
+    // existing admin user creation/edit flows.
+    phone: {
+      type: String,
+      trim: true,
+    },
+    company: {
+      type: String,
+      trim: true,
+    },
+    addresses: {
+      type: [addressSchema],
+      default: [],
     },
     avatar: {
       type: String,

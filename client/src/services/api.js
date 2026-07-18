@@ -92,6 +92,7 @@ api.interceptors.response.use(
 
 // Auth
 export const authAPI = {
+  register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
@@ -178,6 +179,29 @@ export const quotesAPI = {
   submit: (data) => api.post('/quotes', data),
   getAll: (params) => api.get('/admin/quotes', { params }),
   update: (id, data) => api.patch(`/admin/quotes/${id}`, data),
+};
+
+// Orders (Customer Portal)
+export const ordersAPI = {
+  place: (data) => api.post('/customer/orders', data),
+  getMyOrders: (params) => api.get('/customer/orders', { params }),
+  getMyOrder: (id) => api.get(`/customer/orders/${id}`),
+  getMyDashboard: () => api.get('/customer/dashboard'),
+  getMyInvoices: (params) => api.get('/customer/invoices', { params }),
+  // Admin
+  adminGetAll: (params) => api.get('/admin/orders', { params }),
+  updateStatus: (id, data) => api.patch(`/admin/orders/${id}/status`, data),
+};
+
+// Customer profile & address book
+// Note: profile updates (name/phone/company) use authAPI.updateProfile,
+// which now also accepts phone/company — no separate endpoint needed.
+export const customerAPI = {
+  getAddresses: () => api.get('/customer/addresses'),
+  addAddress: (data) => api.post('/customer/addresses', data),
+  updateAddress: (id, data) => api.patch(`/customer/addresses/${id}`, data),
+  deleteAddress: (id) => api.delete(`/customer/addresses/${id}`),
+  setDefaultAddress: (id) => api.patch(`/customer/addresses/${id}/default`),
 };
 
 // Settings
