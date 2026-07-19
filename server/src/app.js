@@ -21,6 +21,13 @@ const v1Routes = require('./routes/v1');
 
 const app = express();
 
+// Render (and most PaaS hosts) sit behind a reverse proxy that terminates
+// HTTPS and forwards plain HTTP internally. Without this, req.protocol
+// resolves to 'http', which breaks anything that builds an absolute URL
+// from the request — notably the Google OAuth callback URL, causing a
+// redirect_uri_mismatch even when OAUTH_CALLBACK_URL looks correct.
+app.set('trust proxy', 1);
+
 // ─── Security Middleware ──────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow serving static images

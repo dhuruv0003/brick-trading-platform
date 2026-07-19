@@ -98,7 +98,9 @@ class CustomerAuthService {
       firstName,
       lastName,
       email,
-      phone: '', // Will prompt to fill on first login
+      // phone intentionally omitted — Google profiles don't provide one,
+      // and setting it to '' would fail the schema's regex match validator.
+      // Customer fills it in on first profile completion.
       googleId,
       authProvider: 'google',
       isEmailVerified: true,

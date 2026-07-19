@@ -26,7 +26,12 @@ const customerSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: [true, 'Phone number is required'],
+      required: [
+        function () {
+          return this.authProvider !== 'google';
+        },
+        'Phone number is required',
+      ],
       trim: true,
       match: [/^[+]?[\d\s\-().]{7,20}$/, 'Please provide a valid phone number'],
     },
