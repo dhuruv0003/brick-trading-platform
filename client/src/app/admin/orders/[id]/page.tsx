@@ -3,10 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Grid, Divider, Button, Select, MenuItem, FormControl, InputLabel, CircularProgress, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { adminOrdersAPI } from '../../../../services/api';
 import dayjs from 'dayjs';
 
-export default function AdminOrderDetailsPage({ params }: { params: { id: string } }) {
+export default function AdminOrderDetailsPage() {
+  const params = useParams<{ id: string }>();
+  const orderId = params?.id as string;
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -16,7 +19,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const res = await adminOrdersAPI.getOne(params.id);
+        const res = await adminOrdersAPI.getOne(orderId);
         setOrder(res.data.data.order);
         setStatus(res.data.data.order.status);
       } catch (err: any) {
@@ -26,12 +29,12 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       }
     };
     fetchOrder();
-  }, [params.id]);
+  }, [orderId]);
 
   const handleUpdateStatus = async () => {
     setUpdating(true);
     try {
-      await adminOrdersAPI.update(params.id, { status });
+      await adminOrdersAPI.update(orderId, { status });
       // update local state order status
       setOrder({ ...order, status });
       alert('Order status updated successfully');

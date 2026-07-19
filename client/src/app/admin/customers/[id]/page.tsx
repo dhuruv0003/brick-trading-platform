@@ -3,10 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Grid, Button, CircularProgress, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { adminCustomersAPI } from '../../../../services/api';
 import dayjs from 'dayjs';
 
-export default function AdminCustomerDetailsPage({ params }: { params: { id: string } }) {
+export default function AdminCustomerDetailsPage() {
+  const params = useParams<{ id: string }>();
+  const customerId = params?.id as string;
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -14,7 +17,7 @@ export default function AdminCustomerDetailsPage({ params }: { params: { id: str
   useEffect(() => {
     const fetchCustomer = async () => {
       try {
-        const res = await adminCustomersAPI.getOne(params.id);
+        const res = await adminCustomersAPI.getOne(customerId);
         setCustomer(res.data.data.customer);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to load customer details');
@@ -23,7 +26,7 @@ export default function AdminCustomerDetailsPage({ params }: { params: { id: str
       }
     };
     fetchCustomer();
-  }, [params.id]);
+  }, [customerId]);
 
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;

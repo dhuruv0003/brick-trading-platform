@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Box, Paper, TextField, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import Visibility from '@mui/icons-material/Visibility';
@@ -8,8 +8,10 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { customerAuthAPI } from '../../../../services/api';
 import GuestOnlyGuard from '../../../../components/guards/GuestOnlyGuard';
 
-export default function ResetPasswordPage({ params }: { params: { token: string } }) {
+export default function ResetPasswordPage() {
   const router = useRouter();
+  const params = useParams<{ token: string }>();
+  const token = params?.token as string;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +28,7 @@ export default function ResetPasswordPage({ params }: { params: { token: string 
     setErrorMsg('');
 
     try {
-      await customerAuthAPI.resetPassword(params.token, { password });
+      await customerAuthAPI.resetPassword(token, { password });
       router.push('/auth/login?reset=success');
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || 'Failed to reset password. Token may be invalid or expired.');

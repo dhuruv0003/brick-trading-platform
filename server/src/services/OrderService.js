@@ -1,8 +1,11 @@
 const orderRepository = require('../repositories/OrderRepository');
 const productRepository = require('../repositories/ProductRepository');
 const CustomerAddress = require('../models/CustomerAddress');
+const Customer = require('../models/Customer');
 const AppError = require('../utils/AppError');
 const NotificationService = require('./NotificationService');
+const { sendEmail, renderEmailTemplate } = require('../config/mailer');
+const config = require('../config/env');
 
 /**
  * OrderService
@@ -131,7 +134,65 @@ class OrderService {
     // Fire notification (non-blocking)
     NotificationService.orderPlaced(customerId, orderNumber).catch(() => {});
 
+    // Fire order-confirmation emails to the customer and admin — best-effort,
+    // never blocks or fails the order response if email sending has issues.
+    Promise.allSettled([
+      this._notifyCustomerOfOrder(customerId, order),
+      this._notifyAdminOfOrder(order),
+    ]);
+
     return order;
+  }
+
+  /**
+   * Order confirmation email sent to the customer who placed the order.
+   */
+  async _notifyCustomerOfOrder(customerId, order) {
+    const customer = await Customer.findById(customerId).select('firstName lastName email');
+    if (!customer?.email) return;
+
+    const itemRows = order.items.map((item) => ({
+      label: item.productSnapshot?.name || 'Item',
+      value: `${item.quantity} × ₹${item.unitPrice.toLocaleString('en-IN')} = ₹${item.totalPrice.toLocaleString('en-IN')}`,
+    }));
+
+    await sendEmail({
+      to: customer.email,
+      subject: `Order confirmed — #${order.orderNumber} — ${config.company.name}`,
+      html: renderEmailTemplate({
+        heading: `Thanks for your order, ${customer.firstName}!`,
+        intro: `Your order <strong>#${order.orderNumber}</strong> has been placed successfully. Here's a summary:`,
+        rows: [
+          ...itemRows,
+          { label: 'Subtotal', value: `₹${order.pricing.subtotal.toLocaleString('en-IN')}` },
+          { label: 'Total', value: `<strong>₹${order.pricing.total.toLocaleString('en-IN')}</strong>` },
+          { label: 'Payment Method', value: (order.paymentMethod || 'cod').toUpperCase() },
+          { label: 'Shipping To', value: `${order.shippingAddress?.addressLine1}, ${order.shippingAddress?.city}` },
+        ],
+        footerNote: `Track your order anytime at ${config.clientUrl}/account/orders. — ${config.company.name}`,
+      }),
+    });
+  }
+
+  /**
+   * New-order alert email sent to the admin inbox.
+   */
+  async _notifyAdminOfOrder(order) {
+    if (!config.email.adminEmail) return;
+    await sendEmail({
+      to: config.email.adminEmail,
+      subject: `New Order #${order.orderNumber} — ₹${order.pricing.total.toLocaleString('en-IN')}`,
+      html: renderEmailTemplate({
+        heading: 'New Order Placed',
+        rows: [
+          { label: 'Order #', value: order.orderNumber },
+          { label: 'Items', value: `${order.items.length} item(s)` },
+          { label: 'Total', value: `₹${order.pricing.total.toLocaleString('en-IN')}` },
+          { label: 'Payment Method', value: (order.paymentMethod || 'cod').toUpperCase() },
+        ],
+        footerNote: `<a href="${config.clientUrl}/admin/orders/${order._id}" style="color:#c2410c;">View in Admin →</a>`,
+      }),
+    });
   }
 
   /**

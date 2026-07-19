@@ -77,7 +77,7 @@ export default function AdminOrdersPage() {
                       <TableCell>
                         {order.customer ? `${order.customer.firstName} ${order.customer.lastName}` : 'Guest'}
                       </TableCell>
-                      <TableCell>₹{order.totalAmount?.toLocaleString()}</TableCell>
+                      <TableCell>₹{(order.pricing?.total ?? 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <Chip label={order.status.toUpperCase()} size="small" color={getStatusColor(order.status) as any} />
                       </TableCell>

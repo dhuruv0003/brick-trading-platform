@@ -9,7 +9,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ReplayIcon from '@mui/icons-material/Replay';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { ordersAPI } from '../../../../services/api';
 import useCart from '../../../../hooks/useCart';
 import { useSnackbar } from 'notistack';
@@ -30,8 +30,10 @@ const STATUS_COLORS: Record<string, 'warning' | 'info' | 'primary' | 'success' |
   refunded: 'default',
 };
 
-export default function OrderDetailsPage({ params }: { params: { id: string } }) {
+export default function OrderDetailsPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const orderId = params?.id as string;
   const { add: addToCart } = useCart();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -47,7 +49,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const res = await ordersAPI.getOne(params.id);
+        const res = await ordersAPI.getOne(orderId);
         setOrder(res.data.data.order);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to load order details.');
@@ -56,12 +58,12 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       }
     };
     fetchOrder();
-  }, [params.id]);
+  }, [orderId]);
 
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      const res = await ordersAPI.cancel(params.id, { reason: cancelReason });
+      const res = await ordersAPI.cancel(orderId, { reason: cancelReason });
       setOrder(res.data.data.order);
       setCancelOpen(false);
       enqueueSnackbar('Order cancelled successfully.', { variant: 'success' });

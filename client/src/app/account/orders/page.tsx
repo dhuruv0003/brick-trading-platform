@@ -74,7 +74,7 @@ export default function OrdersPage() {
                     {dayjs(order.createdAt).format('DD MMM YYYY')}
                   </TableCell>
                   <TableCell>
-                    ₹{order.totalAmount?.toLocaleString()}
+                    ₹{(order.pricing?.total ?? 0).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Chip label={order.status.toUpperCase()} size="small" color={getStatusColor(order.status) as any} />
