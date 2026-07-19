@@ -33,10 +33,17 @@ export default function CartPage() {
   const { itemsList, total, remove, update, clear } = useCart();
   const { isInWishlist, add: addToWishlist, remove: removeFromWishlist } = useWishlist();
 
-  const handleUpdateQuantity = (productId, newQuantity) => {
+  const handleUpdateQuantity = (
+    productId: string,
+    newQuantity: number
+  ) => {
     const result = update(productId, newQuantity);
+
     if (result?.clamped) {
-      enqueueSnackbar(`Only ${result.limit} unit${result.limit === 1 ? '' : 's'} available in stock.`, { variant: 'warning' });
+      enqueueSnackbar(
+        `Only ${result.limit} unit${result.limit === 1 ? '' : 's'} available in stock.`,
+        { variant: 'warning' }
+      );
     }
   };
 
