@@ -62,10 +62,14 @@ api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
       if (config.url && config.url.startsWith('/customer')) {
-        const token = localStorage.getItem('brickpro_customer_token');
+        const token =
+          localStorage.getItem('brickpro_customer_token') ||
+          sessionStorage.getItem('brickpro_customer_token');
         if (token) config.headers.Authorization = `Bearer ${token}`;
       } else {
-        const token = localStorage.getItem('brickpro_token');
+        const token =
+          localStorage.getItem('brickpro_token') ||
+          sessionStorage.getItem('brickpro_token');
         if (token) config.headers.Authorization = `Bearer ${token}`;
       }
     }

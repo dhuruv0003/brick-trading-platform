@@ -26,8 +26,10 @@ function OAuthSuccessHandler() {
         const response = await customerAuthAPI.getMe();
         const customer = response.data.data.customer;
 
-        // Fully hydrate Redux
-        dispatch(customerLoginSuccess({ customer, token }));
+        // Fully hydrate Redux. OAuth has no "remember me" checkbox, so
+        // treat Google sign-ins as persistent (localStorage) by default —
+        // matching the UX users expect from "Continue with Google".
+        dispatch(customerLoginSuccess({ customer, token, rememberMe: true }));
         router.push('/account/dashboard');
       } catch (error) {
         console.error('OAuth profile fetch failed:', error);
