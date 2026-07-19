@@ -221,22 +221,15 @@ export default function Header() {
           transition: 'all 0.3s ease',
           top: 0,
           zIndex: theme.zIndex.appBar,
-          zIndex: theme.zIndex.appBar,
         }}
       >
         <Container maxWidth="xl">
           <Toolbar disableGutters sx={{ justifyContent: 'space-between', height: { xs: 64, md: 80 }, gap: 1 }}>
-          <Toolbar disableGutters sx={{ justifyContent: 'space-between', height: { xs: 64, md: 80 }, gap: 1 }}>
             {/* Logo */}
-            <Link href="/" style={{ textDecoration: 'none', minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
             <Link href="/" style={{ textDecoration: 'none', minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                 <Box
                   sx={{
-                    width: { xs: 30, md: 36 },
-                    height: { xs: 30, md: 36 },
-                    flexShrink: 0,
                     width: { xs: 30, md: 36 },
                     height: { xs: 30, md: 36 },
                     flexShrink: 0,
@@ -249,20 +242,17 @@ export default function Header() {
                   }}
                 >
                   <Typography variant="h5" sx={{ color: '#fff', fontWeight: 900, fontFamily: 'serif', fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
-                  <Typography variant="h5" sx={{ color: '#fff', fontWeight: 900, fontFamily: 'serif', fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
                     B
                   </Typography>
                 </Box>
                 <Typography
                   variant="h5"
                   noWrap
-                  noWrap
                   sx={{
                     fontWeight: 800,
                     color: theme.palette.text.primary,
                     fontFamily: '"Playfair Display", serif',
                     letterSpacing: '-0.03em',
-                    fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.5rem' },
                     fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.5rem' },
                   }}
                 >
@@ -413,7 +403,6 @@ export default function Header() {
                   aria-label="Open menu"
                   edge="start"
                   onClick={handleDrawerToggle}
-                  sx={{ color: theme.palette.text.primary, flexShrink: 0 }}
                   sx={{ color: theme.palette.text.primary, flexShrink: 0 }}
                 >
                   <MenuIcon />

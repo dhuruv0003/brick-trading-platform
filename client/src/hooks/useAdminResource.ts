@@ -19,12 +19,10 @@ export function useAdminResource({
   key,
   api,
   listFn = 'adminGetAll',
-  extraParams = {},
 }: {
   key: string;
   api: AdminResourceApi;
   listFn?: 'adminGetAll' | 'getAll';
-  extraParams?: Record<string, any>;
 }) {
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
@@ -33,10 +31,10 @@ export function useAdminResource({
   const [search, setSearch] = useState('');
 
   const query = useQuery({
-    queryKey: [key, 'list', page, limit, search, extraParams],
+    queryKey: [key, 'list', page, limit, search],
     queryFn: async () => {
       const fn = api[listFn] || api.adminGetAll || api.getAll;
-      const res = await fn!({ page, limit, search: search || undefined, ...extraParams });
+      const res = await fn!({ page, limit, search: search || undefined });
       return res.data;
     },
     placeholderData: keepPreviousData,

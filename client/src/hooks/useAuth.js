@@ -28,14 +28,14 @@ export function useAuth() {
     [dispatch]
   );
 
-  const logout = useCallback(async (redirectTo = '/admin/login') => {
+  const logout = useCallback(async () => {
     try {
       await authAPI.logout();
     } catch {
       // ignore network errors on logout
     }
     dispatch(logoutAction());
-    router.push(redirectTo);
+    router.push('/admin/login');
   }, [dispatch, router]);
 
   // Verify token is still valid, but only once localStorage hydration has

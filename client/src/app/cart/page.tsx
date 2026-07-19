@@ -38,7 +38,6 @@ export default function CartPage() {
     newQuantity: number
   ) => {
     const result = update(productId, newQuantity);
-
     if (result?.clamped) {
       enqueueSnackbar(
         `Only ${result.limit} unit${result.limit === 1 ? '' : 's'} available in stock.`,

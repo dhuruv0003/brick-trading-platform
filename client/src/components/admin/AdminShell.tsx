@@ -30,7 +30,6 @@ import RateReviewIcon from '@mui/icons-material/RateReview';
 import HelpIcon from '@mui/icons-material/Help';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
-import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import PeopleIcon from '@mui/icons-material/People';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import SettingsIcon from '@mui/icons-material/Settings';
