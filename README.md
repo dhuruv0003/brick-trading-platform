@@ -79,9 +79,3 @@ added without touching the admin RBAC system.
   `NEXT_PUBLIC_API_URL` in `client/.env.local` points to the wrong port.
 - **Login succeeds then immediately logs out**: check the browser console —
   usually a CORS or clock-skew issue with the JWT.
-
-
-
-
-
-SMTp = xsmtpsib-c4ea16a471b9a41a15ea65beeb8a584ddc370450c955121755c8c0e48ecb8ca3-pKJBN9tMDSmz2BmX
