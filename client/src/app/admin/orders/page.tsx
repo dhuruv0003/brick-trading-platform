@@ -18,8 +18,8 @@ export default function AdminOrdersPage() {
       setLoading(true);
       try {
         const res = await adminOrdersAPI.getAll({ page: page + 1, limit: rowsPerPage });
-        setOrders(res.data.data.orders);
-        setTotal(res.data.pagination.total);
+        setOrders(res.data.data);
+        setTotal(res.data.meta.total);
       } catch (err) {
         console.error(err);
       } finally {
@@ -109,4 +109,4 @@ export default function AdminOrdersPage() {
       </Paper>
     </Box>
   );
-}
+} 

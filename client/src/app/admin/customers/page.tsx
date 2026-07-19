@@ -18,8 +18,8 @@ export default function AdminCustomersPage() {
       setLoading(true);
       try {
         const res = await adminCustomersAPI.getAll({ page: page + 1, limit: rowsPerPage });
-        setCustomers(res.data.data.customers);
-        setTotal(res.data.pagination.total);
+        setCustomers(res.data.data);
+        setTotal(res.data.meta.total);
       } catch (err) {
         console.error(err);
       } finally {

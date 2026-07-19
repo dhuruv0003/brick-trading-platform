@@ -3,6 +3,8 @@ const quoteRepository = require('../repositories/QuoteRepository');
 const Inquiry = require('../models/Inquiry');
 const Quote = require('../models/Quote');
 const Product = require('../models/Product');
+const Order = require('../models/Order');
+const Customer = require('../models/Customer');
 const AppError = require('../utils/AppError');
 const { sendEmail, renderEmailTemplate } = require('../config/mailer');
 const whatsapp = require('../config/whatsapp');
@@ -244,37 +246,41 @@ class CrmService {
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
     const [
-      totalLeads, newLeads, thisMonthLeads, lastMonthLeads,
-      totalQuotes, pendingQuotes,
+      totalOrders, pendingOrders, thisMonthOrders, lastMonthOrders,
+      totalCustomers, newCustomersThisMonth,
       totalProducts, featuredProducts,
-      recentLeads, leadsByStatus, leadsByCustomerType,
+      recentOrders, ordersByStatus,
+      revenueAgg,
     ] = await Promise.all([
-      Inquiry.countDocuments(),
-      Inquiry.countDocuments({ status: 'new' }),
-      Inquiry.countDocuments({ createdAt: { $gte: startOfMonth } }),
-      Inquiry.countDocuments({ createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } }),
-      Quote.countDocuments(),
-      Quote.countDocuments({ status: 'pending' }),
+      Order.countDocuments(),
+      Order.countDocuments({ status: 'pending' }),
+      Order.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      Order.countDocuments({ createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } }),
+      Customer.countDocuments(),
+      Customer.countDocuments({ createdAt: { $gte: startOfMonth } }),
       Product.countDocuments({ isActive: true }),
       Product.countDocuments({ isFeatured: true, isActive: true }),
-      Inquiry.find().sort({ createdAt: -1 }).limit(5).select('name phone customerType status createdAt'),
-      Inquiry.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
-      Inquiry.aggregate([{ $group: { _id: '$customerType', count: { $sum: 1 } } }]),
+      Order.find().sort({ createdAt: -1 }).limit(5).select('orderNumber customer pricing status createdAt').populate('customer', 'firstName lastName'),
+      Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Order.aggregate([
+        { $match: { status: { $nin: ['cancelled', 'refunded'] } } },
+        { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+      ]),
     ]);
 
-    const leadGrowth = lastMonthLeads > 0
-      ? (((thisMonthLeads - lastMonthLeads) / lastMonthLeads) * 100).toFixed(1)
+    const orderGrowth = lastMonthOrders > 0
+      ? (((thisMonthOrders - lastMonthOrders) / lastMonthOrders) * 100).toFixed(1)
       : 100;
 
     return {
       stats: {
-        totalLeads, newLeads, thisMonthLeads, lastMonthLeads, leadGrowth: parseFloat(leadGrowth),
-        totalQuotes, pendingQuotes,
+        totalOrders, pendingOrders, thisMonthOrders, lastMonthOrders, orderGrowth: parseFloat(orderGrowth),
+        totalCustomers, newCustomersThisMonth,
         totalProducts, featuredProducts,
+        totalRevenue: revenueAgg[0]?.total || 0,
       },
-      recentLeads,
-      leadsByStatus,
-      leadsByCustomerType,
+      recentOrders,
+      ordersByStatus,
     };
   }
 }
