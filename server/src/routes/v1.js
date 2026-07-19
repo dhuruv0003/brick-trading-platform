@@ -6,8 +6,6 @@ const blogController = require('../controllers/blogController');
 const adminController = require('../controllers/adminController');
 const aiController = require('../controllers/aiController');
 const inquiryController = require('../controllers/inquiryController');
-const orderController = require('../controllers/orderController');
-const customerController = require('../controllers/customerController');
 const { protect } = require('../middleware/auth');
 const { restrictTo } = require('../middleware/rbac');
 const { uploadToMemory } = require('../middleware/upload');
@@ -71,10 +69,6 @@ router.patch('/admin/leads/:id/status', restrictTo('super_admin', 'admin', 'mana
 // Quotes
 router.get('/admin/quotes', restrictTo('super_admin', 'admin', 'manager', 'staff'), inquiryController.getQuotes);
 router.patch('/admin/quotes/:id', restrictTo('super_admin', 'admin', 'manager'), inquiryController.updateQuote);
-
-// Orders (customer portal — Phase 1)
-router.get('/admin/orders', restrictTo('super_admin', 'admin', 'manager', 'staff'), orderController.getOrders);
-router.patch('/admin/orders/:id/status', restrictTo('super_admin', 'admin', 'manager', 'staff'), orderController.updateOrderStatus);
 
 // Gallery
 router.get('/admin/gallery', restrictTo('super_admin', 'admin', 'manager', 'staff'), adminController.adminGetGallery);
@@ -146,20 +140,5 @@ router.patch('/admin/customers/:id', restrictTo('super_admin', 'admin', 'manager
 router.post('/admin/ai/generate-blog', restrictTo('super_admin', 'admin', 'manager'), aiLimiter, aiController.generateBlog);
 router.post('/admin/ai/reply-suggestion', restrictTo('super_admin', 'admin', 'manager', 'staff'), aiLimiter, aiController.replySuggestion);
 router.get('/admin/ai/insights', restrictTo('super_admin', 'admin', 'manager'), aiController.dashboardInsights);
-
-// ─── Protected Customer routes (Customer Portal — Phase 1) ──────────────────
-router.use('/customer', protect, restrictTo('customer'));
-
-router.get('/customer/dashboard', orderController.getMyDashboard);
-router.get('/customer/orders', orderController.getMyOrders);
-router.get('/customer/orders/:id', orderController.getMyOrder);
-router.post('/customer/orders', orderController.placeOrder);
-router.get('/customer/invoices', orderController.getMyInvoices);
-
-router.get('/customer/addresses', customerController.getMyAddresses);
-router.post('/customer/addresses', customerController.addAddress);
-router.patch('/customer/addresses/:id', customerController.updateAddress);
-router.delete('/customer/addresses/:id', customerController.deleteAddress);
-router.patch('/customer/addresses/:id/default', customerController.setDefaultAddress);
 
 module.exports = router;

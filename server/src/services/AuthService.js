@@ -56,13 +56,10 @@ class AuthService {
     return user;
   }
 
-  async updateProfile(userId, { name, avatar, phone, company }) {
+  async updateProfile(userId, { name, avatar }) {
     const updateData = {};
     if (name) updateData.name = name;
     if (avatar) updateData.avatar = avatar;
-    // Customer-only fields — harmless no-ops for staff accounts that never send them.
-    if (phone !== undefined) updateData.phone = phone;
-    if (company !== undefined) updateData.company = company;
 
     const user = await userRepository.updateById(userId, updateData);
     if (!user) throw new AppError('User not found.', 404);

@@ -31,29 +31,8 @@ module.exports = {
   },
   // Kept for the admin-notification recipient address (ADMIN_EMAIL is still
   // just a plain "to" address, unrelated to how the email gets sent).
-  // Email is sent via Brevo's HTTP API (see src/config/mailer.js), not SMTP —
-  // Render's free tier blocks outbound SMTP ports, but HTTPS works fine.
-  brevo: {
-    apiKey: process.env.BREVO_API_KEY,
-    // Must be a sender you've verified in your Brevo account.
-    senderEmail: process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_FROM,
-    senderName: process.env.BREVO_SENDER_NAME || process.env.COMPANY_NAME || 'BrickPro',
-  },
-  // Kept for the admin-notification recipient address (ADMIN_EMAIL is still
-  // just a plain "to" address, unrelated to how the email gets sent).
   email: {
     adminEmail: process.env.ADMIN_EMAIL,
-  },
-  whatsapp: {
-    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
-    accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
-    apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
-    // Admin's own WhatsApp number to notify of new leads, in addition to the
-    // customer confirmation. Falls back to company.whatsapp if unset.
-    adminWhatsapp: process.env.ADMIN_WHATSAPP || process.env.COMPANY_WHATSAPP,
-    // Optional: name of an approved Meta template to use instead of a plain
-    // text message, for messaging customers who haven't messaged you first.
-    fallbackTemplate: process.env.WHATSAPP_FALLBACK_TEMPLATE || null,
   },
   whatsapp: {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
