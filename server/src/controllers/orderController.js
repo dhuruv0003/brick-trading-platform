@@ -10,10 +10,11 @@ const ApiResponse = require('../utils/apiResponse');
  * POST /api/v1/customer/orders
  */
 exports.createOrder = catchAsync(async (req, res) => {
-  const { items, shippingAddress, billingAddress, paymentMethod, notes } = req.body;
+  const { items, shippingAddress, shippingAddressId, billingAddress, paymentMethod, notes } = req.body;
   const order = await orderService.createOrder(req.customer._id, {
     items,
     shippingAddress,
+    shippingAddressId,
     billingAddress,
     paymentMethod,
     notes,
