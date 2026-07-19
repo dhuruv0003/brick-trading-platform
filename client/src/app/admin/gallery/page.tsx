@@ -12,11 +12,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { galleryAPI, uploadAPI } from '../../../services/api';
 import useAdminResource from '../../../hooks/useAdminResource';
 import ConfirmDialog from '../../../components/admin/ConfirmDialog';
+import { useSnackbar } from 'notistack';
 
 const CATEGORY_OPTIONS = ['products', 'projects', 'factory', 'transport', 'team', 'events', 'other'];
-const EMPTY_FORM = { title: '', url: '', category: 'other', caption: '', isActive: true };
+const EMPTY_FORM = { title: '', url: '', publicId: '', category: 'other', caption: '', isActive: true };
 
 export default function AdminGalleryPage() {
+  const { enqueueSnackbar } = useSnackbar();
   const {
     items, isLoading, setSearch, createMutation, updateMutation, deleteMutation,
   } = useAdminResource({ key: 'gallery', api: galleryAPI });
@@ -25,7 +27,8 @@ export default function AdminGalleryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [uploading, setUploading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [searchInput, setSearchInput] = useState('');
 
   useEffect(() => {
@@ -42,19 +45,44 @@ export default function AdminGalleryPage() {
 
   const openEdit = (item: any) => {
     setEditingId(item._id);
-    setForm({ title: item.title, url: item.url, category: item.category, caption: item.caption || '', isActive: item.isActive ?? true });
+    setForm({
+      title: item.title,
+      url: item.url,
+      publicId: item.publicId || '',
+      category: item.category,
+      caption: item.caption || '',
+      isActive: item.isActive ?? true,
+    });
     setDialogOpen(true);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const previousPublicId = form.publicId;
     const fd = new FormData();
     fd.append('file', file);
     setUploading(true);
     try {
       const res = await uploadAPI.single(fd);
-      setForm((f) => ({ ...f, url: res.data.data.url }));
+      const { url, publicId } = res.data.data;
+      setForm((f) => ({ ...f, url, publicId }));
+
+      // Clean up the image being replaced so it doesn't linger as an
+      // orphaned file in Cloudinary storage. Best-effort: if this fails,
+      // we don't want to block the user from continuing with their new
+      // image, so we only log a soft warning via the snackbar rather than
+      // treating it as a hard error.
+      if (previousPublicId) {
+        try {
+          await uploadAPI.delete(previousPublicId);
+        } catch {
+          enqueueSnackbar('New image uploaded, but the old one could not be removed from storage.', { variant: 'warning' });
+        }
+      }
+    } catch (err: any) {
+      enqueueSnackbar(err.response?.data?.message || 'Image upload failed. Please try again.', { variant: 'error' });
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -110,7 +138,7 @@ export default function AdminGalleryPage() {
                       <IconButton size="small" onClick={() => openEdit(item)}><EditIcon fontSize="small" /></IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(item._id)}><DeleteIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(item)}><DeleteIcon fontSize="small" /></IconButton>
                     </Tooltip>
                   </Box>
                 </Box>
@@ -168,9 +196,31 @@ export default function AdminGalleryPage() {
         message="Are you sure you want to delete this gallery image?"
         onCancel={() => setDeleteTarget(null)}
         onConfirm={async () => {
-          if (deleteTarget) await deleteMutation.mutateAsync(deleteTarget);
-          setDeleteTarget(null);
+          if (!deleteTarget) return;
+          setDeleting(true);
+          try {
+            // Delete the DB record first: if this fails, we haven't
+            // touched Cloudinary yet, so nothing is orphaned or
+            // inconsistent. Only clean up the Cloudinary asset once we
+            // know the record itself was actually removed.
+            await deleteMutation.mutateAsync(deleteTarget._id);
+            if (deleteTarget.publicId) {
+              try {
+                await uploadAPI.delete(deleteTarget.publicId);
+              } catch {
+                // The gallery record is already gone at this point, so we
+                // don't want to block the user or imply the whole
+                // operation failed — just surface that manual Cloudinary
+                // cleanup may be needed.
+                enqueueSnackbar('Gallery item deleted, but its image could not be removed from storage.', { variant: 'warning' });
+              }
+            }
+          } finally {
+            setDeleting(false);
+            setDeleteTarget(null);
+          }
         }}
+        confirmDisabled={deleting}
       />
     </Box>
   );

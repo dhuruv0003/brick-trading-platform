@@ -8,14 +8,16 @@ import { Box } from '@mui/material';
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const isAuth = pathname?.startsWith('/auth');
+  const hideHeaderFooter = isAdmin || isAuth;
 
   return (
     <>
-      {!isAdmin && <Header />}
+      {!hideHeaderFooter && <Header />}
       <Box component="main" sx={{ flexGrow: 1, minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
         {children}
       </Box>
-      {!isAdmin && <Footer />}
+      {!hideHeaderFooter && <Footer />}
     </>
   );
 }

@@ -1,69 +1,51 @@
 const mongoose = require('mongoose');
 
-const orderItemSchema = new mongoose.Schema({
-  product: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true,
-  },
-  productName: String, // snapshot — survives product edits/deletion
-  productImage: String, // snapshot
-  quantity: {
-    type: Number,
-    required: true,
-    min: [1, 'Quantity must be at least 1'],
-  },
-  unit: {
-    type: String,
-    default: 'pieces',
-  },
-  priceType: {
-    type: String,
-    enum: ['retail', 'wholesale', 'bulk', 'custom'],
-    default: 'retail',
-  },
-  unitPrice: Number,
-  totalPrice: Number,
-});
-
-// Snapshot of the address at the time the order was placed, so later edits
-// (or deletion) of the customer's saved address book never change what was
-// actually recorded for an already-placed order.
-const orderAddressSchema = new mongoose.Schema(
+const orderItemSchema = new mongoose.Schema(
   {
-    label: String,
-    line1: { type: String, required: true },
-    line2: String,
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-    phone: { type: String, required: true },
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true,
+    },
+    // Snapshot at time of order to preserve history if product is updated/deleted
+    productSnapshot: {
+      name: { type: String, required: true },
+      slug: { type: String, default: '' },
+      image: { type: String, default: null },
+      sku: { type: String, default: '' },
+      category: { type: String, default: '' },
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: [1, 'Quantity must be at least 1'],
+    },
+    unitPrice: {
+      type: Number,
+      required: true,
+      min: [0, 'Unit price cannot be negative'],
+    },
+    totalPrice: {
+      type: Number,
+      required: true,
+      min: [0, 'Total price cannot be negative'],
+    },
   },
-  { _id: false },
+  { _id: true }
 );
 
-// Customer-facing status set. Kept simple and in plain English on purpose
-// (this app is used by people in tier-3 cities who don't think in terms of
-// "quotes" or "fulfillment jargon") — these are the exact labels shown as
-// the tracking timeline on the order detail page.
-const ORDER_STATUSES = [
-  'placed',
-  'confirmed',
-  'preparing',
-  'ready_for_dispatch',
-  'out_for_delivery',
-  'delivered',
-  'cancelled',
-];
-
-const statusHistorySchema = new mongoose.Schema(
+const addressSchema = new mongoose.Schema(
   {
-    status: { type: String, enum: ORDER_STATUSES, required: true },
-    note: String,
-    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    changedAt: { type: Date, default: Date.now },
+    fullName: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true },
+    addressLine1: { type: String, required: true, trim: true },
+    addressLine2: { type: String, trim: true, default: '' },
+    city: { type: String, required: true, trim: true },
+    state: { type: String, required: true, trim: true },
+    pincode: { type: String, required: true, trim: true },
+    landmark: { type: String, trim: true, default: '' },
   },
-  { _id: false },
+  { _id: false }
 );
 
 const orderSchema = new mongoose.Schema(
@@ -71,82 +53,90 @@ const orderSchema = new mongoose.Schema(
     orderNumber: {
       type: String,
       unique: true,
+      required: true,
     },
     customer: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Customer',
       required: true,
-      index: true,
     },
-    // Denormalized snapshot so admin order lists/emails don't need to
-    // populate the customer for basic display, mirroring how Quote already
-    // stores name/phone/email directly rather than only a ref.
-    customerName: String,
-    customerPhone: String,
-    customerEmail: String,
-
     items: {
       type: [orderItemSchema],
-      validate: [(v) => v.length > 0, 'An order must have at least one item.'],
+      validate: {
+        validator: (v) => v.length > 0,
+        message: 'Order must contain at least one item',
+      },
+    },
+    pricing: {
+      subtotal: { type: Number, required: true, default: 0 },
+      tax: { type: Number, default: 0 },
+      shippingCharge: { type: Number, default: 0 },
+      discount: { type: Number, default: 0 },
+      total: { type: Number, required: true, default: 0 },
     },
     shippingAddress: {
-      type: orderAddressSchema,
+      type: addressSchema,
       required: true,
     },
-
-    subtotal: { type: Number, default: 0 },
-    discount: { type: Number, default: 0 },
-    totalAmount: { type: Number, default: 0 },
-
-    notes: String, // customer-provided note at checkout
-
+    billingAddress: {
+      type: addressSchema,
+      default: null,
+    },
     status: {
       type: String,
-      enum: ORDER_STATUSES,
-      default: 'placed',
-    },
-    statusHistory: {
-      type: [statusHistorySchema],
-      default: () => [{ status: 'placed' }],
-    },
-    cancelReason: String,
-
-    // No payment gateway is integrated (by design, Phase 1). This exists
-    // only so the invoice section and admin UI have a place to reflect
-    // "paid on delivery" / "unpaid" state without implying any online
-    // payment flow.
-    paymentStatus: {
-      type: String,
-      enum: ['pending', 'paid'],
+      enum: ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded'],
       default: 'pending',
     },
-
-    // Populated once an admin generates an invoice for a delivered order.
-    // Left null until that happens — the invoice section on the customer
-    // side simply has nothing to show until then (see OrderService).
-    invoice: {
-      number: String,
-      generatedAt: Date,
-      fileUrl: String,
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'failed', 'refunded'],
+      default: 'pending',
     },
-
-    ipAddress: String,
+    paymentMethod: {
+      type: String,
+      enum: ['cod', 'online', 'bank_transfer'],
+      default: 'cod',
+    },
+    paymentReference: {
+      type: String,
+      default: null,
+    },
+    trackingNumber: {
+      type: String,
+      default: null,
+    },
+    notes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    adminNotes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    cancelReason: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-orderSchema.pre('save', async function (next) {
-  if (!this.orderNumber) {
-    const count = await mongoose.model('Order').countDocuments();
-    this.orderNumber = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
-  }
-  next();
-});
-
+// Indexes
+orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ customer: 1, createdAt: -1 });
-orderSchema.index({ status: 1, createdAt: -1 });
-orderSchema.index({ orderNumber: 1 });
-
-orderSchema.statics.STATUSES = ORDER_STATUSES;
+orderSchema.index({ status: 1 });
+orderSchema.index({ paymentStatus: 1 });
+orderSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

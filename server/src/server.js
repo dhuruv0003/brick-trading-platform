@@ -1,7 +1,10 @@
+const http = require('http');
+const { Server: SocketServer } = require('socket.io');
 const app = require('./app');
 const config = require('./config/env');
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
+const NotificationService = require('./services/NotificationService');
 
 // Uncaught exception handler
 process.on('uncaughtException', (err) => {
@@ -12,8 +15,38 @@ process.on('uncaughtException', (err) => {
 // Connect to MongoDB
 connectDB();
 
-// Start server
-const server = app.listen(config.port, () => {
+// ── Create HTTP server and attach socket.io ────────────────────────────────
+const server = http.createServer(app);
+
+const io = new SocketServer(server, {
+  cors: {
+    origin: config.clientUrl || process.env.CLIENT_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  // Use path /socket.io (default) — no conflict with Express API routes
+});
+
+// Give NotificationService a reference to io so it can emit events
+NotificationService.init(io);
+
+// ── Socket.io connection handler ───────────────────────────────────────────
+io.on('connection', (socket) => {
+  // The client sends its customerId immediately after connecting (if logged in)
+  socket.on('join', (customerId) => {
+    if (customerId) {
+      socket.join(customerId.toString());
+      logger.info(`Socket joined room: ${customerId}`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    logger.info(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+// ── Start server ───────────────────────────────────────────────────────────
+server.listen(config.port, () => {
   logger.info(`BrickPro API running in ${config.env} mode on port ${config.port}`);
   logger.info(`Health check: http://localhost:${config.port}/health`);
 });

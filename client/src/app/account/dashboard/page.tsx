@@ -1,125 +1,206 @@
 'use client';
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { Grid2 as Grid, Paper, Box, Typography, Chip, Button, Skeleton, Stack } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Grid, Paper, Button, CircularProgress, Chip } from '@mui/material';
+import Link from 'next/link';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
-import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import StorefrontIcon from '@mui/icons-material/Storefront';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import PersonIcon from '@mui/icons-material/Person';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import { ordersAPI } from '../../../services/api';
-import useAuth from '../../../hooks/useAuth';
-import ResponsiveDataView from '../../../components/common/ResponsiveDataView';
-import { STATUS_COLORS, STATUS_LABELS } from '../../../lib/orderStatus';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import useCustomerAuth from '../../../hooks/useCustomerAuth';
+import useWishlist from '../../../hooks/useWishlist';
+import { ordersAPI, customerAddressAPI } from '../../../services/api';
+import dayjs from 'dayjs';
 
-// Same visual pattern as the admin dashboard's StatCard (app/admin/page.tsx),
-// reproduced here rather than imported since that component isn't exported
-// for reuse — kept pixel-identical so the two dashboards feel consistent.
-function StatCard({ icon, label, value, color = 'primary.main' }: { icon: React.ReactNode; label: string; value: React.ReactNode; color?: string }) {
-  return (
-    <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', height: '100%' }}>
-      <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1.5 }}>
-        {icon}
-      </Box>
-      <Typography variant="h4" fontWeight={800}>{value}</Typography>
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
-    </Paper>
-  );
-}
+const STATUS_COLORS: Record<string, 'warning' | 'info' | 'primary' | 'success' | 'error' | 'default'> = {
+  pending: 'warning',
+  confirmed: 'info',
+  processing: 'info',
+  shipped: 'primary',
+  out_for_delivery: 'primary',
+  delivered: 'success',
+  cancelled: 'error',
+  refunded: 'default',
+};
 
-export default function CustomerDashboardPage() {
-  const router = useRouter();
-  const { user } = useAuth();
+export default function DashboardPage() {
+  const { customer } = useCustomerAuth();
+  const { items: wishlistItems } = useWishlist();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['customer', 'dashboard'],
-    queryFn: async () => (await ordersAPI.getMyDashboard()).data.data,
-  });
+  const [orders, setOrders] = useState<any[]>([]);
+  const [addressCount, setAddressCount] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
-  const stats = data?.stats;
-  const recentOrders = data?.recentOrders ?? [];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [ordersRes, addrRes] = await Promise.all([
+          // Fetch up to the backend's max page size so Total/Active/Completed
+          // counts below are accurate for the whole order history, not just
+          // the most recent page. The "Recent Orders" panel still only
+          // displays the first few of these.
+          ordersAPI.getAll({ limit: 100, page: 1 }),
+          customerAddressAPI.getAll(),
+        ]);
+        setOrders(ordersRes.data.data || []);
+        setAddressCount((addrRes.data.data.addresses || []).length);
+      } catch (err) {
+        console.error('Dashboard fetch error', err);
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const ACTIVE_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery'];
+  const activeOrdersCount = orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length;
+  const completedOrdersCount = orders.filter((o) => o.status === 'delivered').length;
+
+  const stats = [
+    {
+      label: 'Total Orders',
+      value: loadingOrders ? '—' : orders.length.toString(),
+      icon: <ShoppingBagIcon color="primary" />,
+      link: '/account/orders',
+    },
+    {
+      label: 'Active Orders',
+      value: loadingOrders ? '—' : activeOrdersCount.toString(),
+      icon: <LocalShippingIcon color="warning" />,
+      link: '/account/orders',
+    },
+    {
+      label: 'Completed Orders',
+      value: loadingOrders ? '—' : completedOrdersCount.toString(),
+      icon: <TaskAltIcon color="success" />,
+      link: '/account/orders',
+    },
+    {
+      label: 'Wishlist Items',
+      value: wishlistItems.length.toString(),
+      icon: <FavoriteIcon color="error" />,
+      link: '/account/wishlist',
+    },
+    {
+      label: 'Saved Addresses',
+      value: addressCount.toString(),
+      icon: <LocationOnIcon color="success" />,
+      link: '/account/addresses',
+    },
+  ];
 
   return (
     <Box>
-      {/* Welcome section */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" fontWeight={800}>
-          Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Here's what's happening with your orders.
-        </Typography>
-      </Box>
+      <Typography variant="h5" fontWeight={800} mb={3} fontFamily='"Playfair Display", serif'>
+        Welcome back, {customer?.firstName}!
+      </Typography>
 
-      {/* Stat cards */}
-      <Grid container spacing={2.5} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 6, md: 3 }}>
-          {isLoading ? <Skeleton variant="rounded" height={128} /> : (
-            <StatCard icon={<ShoppingBagIcon />} label="Total Orders" value={stats?.totalOrders ?? 0} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 6, md: 3 }}>
-          {isLoading ? <Skeleton variant="rounded" height={128} /> : (
-            <StatCard icon={<PendingActionsIcon />} label="Pending Orders" value={stats?.pendingOrders ?? 0} color="warning.main" />
-          )}
-        </Grid>
-        <Grid size={{ xs: 6, md: 3 }}>
-          {isLoading ? <Skeleton variant="rounded" height={128} /> : (
-            <StatCard icon={<CheckCircleIcon />} label="Completed Orders" value={stats?.completedOrders ?? 0} color="success.main" />
-          )}
-        </Grid>
-        <Grid size={{ xs: 6, md: 3 }}>
-          {isLoading ? <Skeleton variant="rounded" height={128} /> : (
-            <StatCard icon={<CancelIcon />} label="Cancelled Orders" value={stats?.cancelledOrders ?? 0} color="error.main" />
-          )}
-        </Grid>
+      {/* ── Stats ────────────────────────────────────────────────────────── */}
+      <Grid container spacing={3} mb={4}>
+        {stats.map((stat, i) => (
+          <Grid item xs={12} sm={6} md={4} lg={2.4} key={i}>
+            <Paper
+              elevation={0}
+              component={Link}
+              href={stat.link}
+              sx={{
+                p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider',
+                display: 'flex', alignItems: 'center', gap: 2,
+                textDecoration: 'none', color: 'inherit',
+                transition: 'border-color 0.2s',
+                '&:hover': { borderColor: 'primary.main' },
+              }}
+            >
+              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default' }}>
+                {stat.icon}
+              </Box>
+              <Box>
+                <Typography variant="h4" fontWeight={700}>{stat.value}</Typography>
+                <Typography variant="body2" color="text.secondary">{stat.label}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        ))}
       </Grid>
 
-      {/* Quick actions */}
-      <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', mb: 3 }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Quick Actions</Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button variant="contained" startIcon={<StorefrontIcon />} onClick={() => router.push('/products')} fullWidth>
-            Browse Products
-          </Button>
-          <Button variant="outlined" startIcon={<ListAltIcon />} onClick={() => router.push('/account/orders')} fullWidth>
-            View Orders
-          </Button>
-          <Button variant="outlined" startIcon={<ReceiptLongIcon />} onClick={() => router.push('/account/invoices')} fullWidth>
-            Invoices
-          </Button>
-          <Button variant="outlined" startIcon={<PersonIcon />} onClick={() => router.push('/account/profile')} fullWidth>
-            Edit Profile
-          </Button>
-        </Stack>
-      </Paper>
+      <Grid container spacing={4}>
+        {/* ── Recent Orders ─────────────────────────────────────────────── */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" fontWeight={700}>Recent Orders</Typography>
+              <Button component={Link} href="/account/orders" size="small">View All</Button>
+            </Box>
 
-      {/* Recent orders */}
-      <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="subtitle1" fontWeight={700}>Recent Orders</Typography>
-        </Box>
-        <ResponsiveDataView
-          isLoading={isLoading}
-          rows={recentOrders}
-          rowKey={(o: any) => o._id}
-          onRowClick={(o: any) => router.push(`/account/orders/${o._id}`)}
-          emptyMessage="You haven't placed any orders yet."
-          renderMobileTitle={(o: any) => `#${o.orderNumber}`}
-          renderMobileSubtitle={(o: any) => new Date(o.createdAt).toLocaleDateString('en-IN')}
-          columns={[
-            { key: 'orderNumber', label: 'Order #', render: (o: any) => `#${o.orderNumber}` },
-            { key: 'createdAt', label: 'Date', render: (o: any) => new Date(o.createdAt).toLocaleDateString('en-IN') },
-            { key: 'items', label: 'Items', render: (o: any) => `${o.items?.length ?? 0} item(s)` },
-            { key: 'totalAmount', label: 'Total', render: (o: any) => `₹${(o.totalAmount ?? 0).toLocaleString('en-IN')}` },
-            { key: 'status', label: 'Status', render: (o: any) => <Chip size="small" label={STATUS_LABELS[o.status] || o.status} color={STATUS_COLORS[o.status] || 'default'} /> },
-          ]}
-        />
-      </Paper>
+            {loadingOrders ? (
+              <CircularProgress size={24} />
+            ) : orders.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography variant="body2" color="text.secondary" mb={1}>No orders yet.</Typography>
+                <Button variant="outlined" size="small" component={Link} href="/products">
+                  Shop Now
+                </Button>
+              </Box>
+            ) : (
+              orders.slice(0, 4).map((order: any) => (
+                <Box
+                  key={order._id}
+                  component={Link}
+                  href={`/account/orders/${order._id}`}
+                  sx={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    py: 1.5, borderBottom: '1px solid', borderColor: 'divider',
+                    textDecoration: 'none', color: 'inherit',
+                    '&:last-child': { borderBottom: 'none' },
+                    '&:hover': { bgcolor: 'action.hover', mx: -1, px: 1, borderRadius: 1 },
+                  }}
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>#{order.orderNumber}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {dayjs(order.createdAt).format('DD MMM YYYY')}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="body2" fontWeight={600}>
+                      ₹{(order.pricing?.total ?? 0).toLocaleString()}
+                    </Typography>
+                    <Chip
+                      label={order.status}
+                      size="small"
+                      color={STATUS_COLORS[order.status] ?? 'default'}
+                      sx={{ mt: 0.25, fontSize: '0.65rem', height: 18 }}
+                    />
+                  </Box>
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Grid>
+
+        {/* ── Account Details ───────────────────────────────────────────── */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" fontWeight={700}>Account Details</Typography>
+              <Button component={Link} href="/account/profile" size="small">Edit Profile</Button>
+            </Box>
+            <Box mb={1.5}>
+              <Typography variant="subtitle2" color="text.secondary">Name</Typography>
+              <Typography variant="body1">{customer?.firstName} {customer?.lastName}</Typography>
+            </Box>
+            <Box mb={1.5}>
+              <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+              <Typography variant="body1">{customer?.email}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
+              <Typography variant="body1">{customer?.phone || '—'}</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

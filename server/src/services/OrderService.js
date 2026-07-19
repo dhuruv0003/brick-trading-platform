@@ -1,286 +1,282 @@
 const orderRepository = require('../repositories/OrderRepository');
-const Product = require('../models/Product');
+const productRepository = require('../repositories/ProductRepository');
+const CustomerAddress = require('../models/CustomerAddress');
 const AppError = require('../utils/AppError');
-const { sendEmail, renderEmailTemplate } = require('../config/mailer');
-const whatsapp = require('../config/whatsapp');
-const config = require('../config/env');
-const invoiceService = require('./InvoiceService');
-const logger = require('../utils/logger');
+const NotificationService = require('./NotificationService');
 
-// Human-friendly labels for the tracking timeline — deliberately plain
-// language (no "fulfillment"/"dispatch queue" jargon) since this app is
-// used by people in tier-3 cities who think in terms of "my order", not
-// e-commerce back-office terms.
-const STATUS_LABELS = {
-  placed: 'Order Placed',
-  confirmed: 'Order Confirmed',
-  preparing: 'Preparing Your Order',
-  ready_for_dispatch: 'Ready for Dispatch',
-  out_for_delivery: 'Out for Delivery',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
-
+/**
+ * OrderService
+ * ------------
+ * Business logic for order creation, retrieval, and status management.
+ * Both customer-facing and admin-facing operations live here.
+ */
 class OrderService {
-  // ---------- Customer-facing ----------
-
   /**
-   * Places an order from the customer's current cart. Mirrors
-   * CrmService.submitQuote's item-snapshotting approach (product name/price
-   * captured at order time), but tied to a logged-in customer + their
-   * saved address instead of an anonymous quote form.
+   * Create a new order from cart items.
+   * Validates products, computes pricing, generates order number.
    */
-  async placeOrder(customerUser, { items, addressId, address, notes }, ip) {
-    if (!items?.length) {
-      throw new AppError('Your cart is empty. Add at least one item before placing an order.', 400);
+  async createOrder(customerId, { items, shippingAddress, shippingAddressId, billingAddress, paymentMethod, notes }) {
+    if (!items || items.length === 0) {
+      throw new AppError('Order must contain at least one item.', 400);
     }
 
-    // Resolve the shipping address: either an existing saved address
-    // (referenced by id) or a one-off address object passed directly.
-    let shippingAddress = address;
-    if (addressId) {
-      const saved = customerUser.addresses.id(addressId);
-      if (!saved || saved.isDeleted) {
-        throw new AppError('Selected address not found.', 404);
+    // Resolve shipping address — accept either an embedded object or a saved address ID
+    let resolvedShippingAddress = shippingAddress;
+    if (!resolvedShippingAddress && shippingAddressId) {
+      const savedAddress = await CustomerAddress.findOne({
+        _id: shippingAddressId,
+        customer: customerId,
+      }).lean();
+      if (!savedAddress) {
+        throw new AppError('Shipping address not found.', 404);
       }
-      shippingAddress = {
-        label: saved.label,
-        line1: saved.line1,
-        line2: saved.line2,
-        city: saved.city,
-        state: saved.state,
-        pincode: saved.pincode,
-        phone: saved.phone,
+      // Map CustomerAddress fields → Order addressSchema fields
+      resolvedShippingAddress = {
+        fullName: savedAddress.fullName,
+        phone: savedAddress.phone,
+        addressLine1: savedAddress.addressLine1,
+        addressLine2: savedAddress.addressLine2 || '',
+        city: savedAddress.city,
+        state: savedAddress.state,
+        pincode: savedAddress.pincode,
+        landmark: savedAddress.landmark || '',
       };
     }
-    if (!shippingAddress?.line1) {
-      throw new AppError('A delivery address is required to place an order.', 400);
+
+    if (!resolvedShippingAddress) {
+      throw new AppError('Shipping address is required.', 400);
     }
 
-    // Snapshot product details + compute totals server-side — never trust
-    // client-submitted prices, same principle as the existing quote flow.
-    const productIds = items.map((i) => i.productId);
-    const products = await Product.find({ _id: { $in: productIds } });
-    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
-
+    // Resolve and validate each product
+    const resolvedItems = [];
     let subtotal = 0;
-    const orderItems = items.map((i) => {
-      const product = productMap.get(i.productId);
-      if (!product) throw new AppError('One of the items in your cart is no longer available.', 400);
 
-      const priceType = i.priceType || 'retail';
-      const unitPrice = product.pricing?.[priceType] || product.pricing?.retail || 0;
-      const isPerThousand = (product.pricing?.unit || '').toLowerCase().includes('1000');
-      const multiplier = isPerThousand ? i.quantity / 1000 : i.quantity;
-      const totalPrice = Math.round(unitPrice * multiplier);
-      subtotal += totalPrice;
-
-      return {
-        product: product._id,
-        productName: product.name,
-        productImage: product.images?.find((img) => img.isPrimary)?.url || product.images?.[0]?.url,
-        quantity: i.quantity,
-        unit: product.pricing?.unit || 'pieces',
-        priceType,
-        unitPrice,
-        totalPrice,
-      };
-    });
-
-    const order = await orderRepository.create({
-      customer: customerUser._id,
-      customerName: customerUser.name,
-      customerPhone: customerUser.phone,
-      customerEmail: customerUser.email,
-      items: orderItems,
-      shippingAddress,
-      subtotal,
-      totalAmount: subtotal, // no discount/payment logic in Phase 1
-      notes,
-      ipAddress: ip,
-    });
-
-    Promise.allSettled([
-      this._notifyAdminOfOrder(order),
-      this._notifyCustomerOfOrder(order, customerUser),
-    ]);
-
-    return order;
-  }
-
-  async getCustomerOrders(customerId, query) {
-    return orderRepository.findCustomerOrders(customerId, query);
-  }
-
-  async getCustomerOrder(orderId, customerId) {
-    const order = await orderRepository.findByIdForCustomer(orderId, customerId);
-    if (!order) throw new AppError('Order not found.', 404);
-
-    // The invoice may already exist on the order (generated at dispatch,
-    // for the admin's benefit) before the customer is meant to see it.
-    // Strip it from the response entirely until "delivered" so there's no
-    // way to obtain the link early via the API, not just via the UI.
-    if (order.status !== 'delivered' && order.invoice?.fileUrl) {
-      const sanitized = order.toObject();
-      sanitized.invoice = undefined;
-      return sanitized;
-    }
-
-    return order;
-  }
-
-  /** Dashboard stats + recent orders for the logged-in customer. */
-  async getCustomerDashboard(customerId) {
-    const [{ total, counts }, recentOrders] = await Promise.all([
-      orderRepository.countByStatusForCustomer(customerId),
-      orderRepository.findAll({ customer: customerId }, { sort: { createdAt: -1 }, limit: 5 }),
-    ]);
-
-    const pending = ['placed', 'confirmed', 'preparing', 'ready_for_dispatch', 'out_for_delivery']
-      .reduce((sum, s) => sum + (counts[s] || 0), 0);
-
-    return {
-      stats: {
-        totalOrders: total,
-        pendingOrders: pending,
-        completedOrders: counts.delivered || 0,
-        cancelledOrders: counts.cancelled || 0,
-      },
-      recentOrders,
-    };
-  }
-
-  /** Completed (delivered) orders that have an invoice — for the customer's invoice list. */
-  async getCustomerInvoices(customerId, query) {
-    return orderRepository.findMany(
-      { customer: customerId, status: 'delivered' },
-      query,
-      { sort: { createdAt: -1 } },
-    );
-  }
-
-  // ---------- Admin-facing ----------
-
-  async listAdminOrders(query) {
-    return orderRepository.findAdminOrders(query);
-  }
-
-  async updateOrderStatus(orderId, { status, note }, adminUserId) {
-    if (!Object.keys(STATUS_LABELS).includes(status)) {
-      throw new AppError('Invalid order status.', 400);
-    }
-    const order = await orderRepository.appendStatusUpdate(orderId, { status, note }, adminUserId);
-    if (!order) throw new AppError('Order not found.', 404);
-
-    // Invoice is generated the moment an order is dispatched — this makes
-    // it available to admin right away. Customers only ever see it once
-    // the order reaches "delivered" (enforced in the customer-facing
-    // getCustomerOrder/getCustomerInvoices queries below, not here), even
-    // though the file itself already exists on the order by then.
-    if (status === 'out_for_delivery' && !order.invoice?.fileUrl) {
-      try {
-        order.invoice = await invoiceService.generate(order);
-        await order.save();
-      } catch (err) {
-        // Never let invoice generation failure block the status update
-        // itself — the order has still genuinely been dispatched.
-        logger.error(`Invoice generation failed for order ${order.orderNumber}: ${err.message}`);
+    for (const item of items) {
+      // Accept both 'product' (from frontend cart) and 'productId' (legacy)
+      const pid = item.product || item.productId;
+      if (!pid || !item.quantity || item.quantity < 1) {
+        throw new AppError('Each item must have a valid product ID and quantity.', 400);
       }
-    }
 
-    Promise.allSettled([this._notifyCustomerOfStatusChange(order)]);
+      const product = await productRepository.findById(pid);
+      if (!product || !product.isActive) {
+        throw new AppError(`Product "${pid}" is not available.`, 400);
+      }
+      if (!product.inStock) {
+        throw new AppError(`"${product.name}" is currently out of stock.`, 400);
+      }
+      // Quantity-based check — only enforced for products with a tracked
+      // stockQuantity (> 0). A stockQuantity of 0 means "not tracked for
+      // this product" (backward compatibility), so we fall back to the
+      // boolean inStock check above in that case.
+      if (product.stockQuantity > 0 && item.quantity > product.stockQuantity) {
+        throw new AppError(
+          `Only ${product.stockQuantity} unit(s) of "${product.name}" are available, but ${item.quantity} were requested.`,
+          400
+        );
+      }
 
-    return order;
-  }
+      const unitPrice = product.pricing?.retail || 0;
+      const itemTotal = unitPrice * item.quantity;
+      subtotal += itemTotal;
 
-  // ---------- Notifications (same pattern as CrmService) ----------
+      const primaryImage = product.images?.find((img) => img.isPrimary)?.url
+        || product.images?.[0]?.url
+        || null;
 
-  async _notifyAdminOfOrder(order) {
-    if (!config.email.adminEmail) return;
-    await sendEmail({
-      to: config.email.adminEmail,
-      subject: `New Order #${order.orderNumber}`,
-      html: renderEmailTemplate({
-        heading: 'New Order Received',
-        rows: [
-          { label: 'Order #', value: order.orderNumber },
-          { label: 'Customer', value: order.customerName },
-          { label: 'Phone', value: order.customerPhone },
-          { label: 'Items', value: `${order.items.length} item(s)` },
-          { label: 'Total', value: `₹${(order.totalAmount || 0).toLocaleString('en-IN')}` },
-        ],
-        footerNote: `<a href="${config.clientUrl}/admin/orders/${order._id}" style="color:#c2410c;">View in Admin →</a>`,
-      }),
-    });
-  }
-
-  async _notifyCustomerOfOrder(order, customerUser) {
-    if (customerUser.email) {
-      const itemRows = order.items.map((item) => ({
-        label: item.productName,
-        value: `${item.quantity} ${item.unit} × ₹${item.unitPrice.toLocaleString('en-IN')} = ₹${item.totalPrice.toLocaleString('en-IN')}`,
-      }));
-      await sendEmail({
-        to: customerUser.email,
-        subject: `Your order #${order.orderNumber} is confirmed — ${config.company.name}`,
-        html: renderEmailTemplate({
-          heading: `Thanks for your order, ${order.customerName}!`,
-          intro: `Your order number is <strong>#${order.orderNumber}</strong>. We'll keep you updated as it's prepared and delivered.`,
-          rows: [
-            ...itemRows,
-            { label: 'Total', value: `<strong>₹${order.totalAmount.toLocaleString('en-IN')}</strong>` },
-            { label: 'Delivery Address', value: `${order.shippingAddress.line1}, ${order.shippingAddress.city}` },
-          ],
-          footerNote: `Need help? Call us at ${config.company.phone}. — ${config.company.name}`,
-        }),
+      resolvedItems.push({
+        product: product._id,
+        productSnapshot: {
+          name: product.name,
+          slug: product.slug,
+          image: primaryImage,
+          sku: product.specs?.type || '',
+          category: product.category?.name || '',
+        },
+        quantity: item.quantity,
+        unitPrice,
+        totalPrice: itemTotal,
       });
     }
 
-    await whatsapp.sendMessage({
-      to: order.customerPhone,
-      message:
-        `Hi ${order.customerName}, your order #${order.orderNumber} with ${config.company.name} has been placed! ` +
-        `Total: ₹${order.totalAmount.toLocaleString('en-IN')}. We'll notify you as it progresses. ` +
-        `For help, call ${config.company.phone}.`,
-      templateName: config.whatsapp.fallbackTemplate,
-      templateParams: [order.customerName, order.orderNumber],
+    const tax = 0; // GST calculation can be extended here
+    const shippingCharge = 0; // Shipping logic can be extended here
+    const discount = 0; // Coupon logic can be extended here
+    const total = subtotal + tax + shippingCharge - discount;
+
+    const orderNumber = await orderRepository.generateOrderNumber();
+
+    const order = await orderRepository.create({
+      orderNumber,
+      customer: customerId,
+      items: resolvedItems,
+      pricing: { subtotal, tax, shippingCharge, discount, total },
+      shippingAddress: resolvedShippingAddress,
+      billingAddress: billingAddress || null,
+      paymentMethod: paymentMethod || 'cod',
+      notes: notes || '',
+      status: 'pending',
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'pending',
     });
+
+    // Decrement stock for tracked products (no-op for untracked ones).
+    // Non-blocking per-item — a failure here shouldn't fail the whole
+    // order, since the order itself was already successfully created.
+    Promise.all(
+      resolvedItems.map((item) =>
+        productRepository.decrementStock(item.product, item.quantity).catch(() => {})
+      )
+    );
+
+    // Fire notification (non-blocking)
+    NotificationService.orderPlaced(customerId, orderNumber).catch(() => {});
+
+    return order;
   }
 
-  /** Sent whenever an admin moves an order to a new status — the core of order tracking. */
-  async _notifyCustomerOfStatusChange(order) {
-    const label = STATUS_LABELS[order.status] || order.status;
-    const message =
-      `Hi ${order.customerName}, your order #${order.orderNumber} is now: ${label}. ` +
-      `Track it anytime: ${config.clientUrl}/account/orders/${order._id}`;
+  /**
+   * Get paginated orders for a specific customer.
+   */
+  async getCustomerOrders(customerId, query) {
+    return orderRepository.findByCustomer(customerId, query);
+  }
 
-    const tasks = [
-      whatsapp.sendMessage({
-        to: order.customerPhone,
-        message,
-        templateName: config.whatsapp.fallbackTemplate,
-        templateParams: [order.customerName, label],
-      }),
-    ];
+  /**
+   * Get a single order by ID, scoped to the customer.
+   */
+  async getOrderById(customerId, orderId) {
+    const order = await orderRepository.findById(orderId, {
+      populate: [
+        { path: 'items.product', select: 'name slug images pricing' },
+      ],
+    });
 
-    if (order.customerEmail) {
-      tasks.push(
-        sendEmail({
-          to: order.customerEmail,
-          subject: `Order #${order.orderNumber} update: ${label}`,
-          html: renderEmailTemplate({
-            heading: label,
-            intro: `Your order <strong>#${order.orderNumber}</strong> has been updated.`,
-            rows: [{ label: 'Status', value: label }],
-            footerNote: `Track your order: <a href="${config.clientUrl}/account/orders/${order._id}" style="color:#c2410c;">${config.clientUrl}/account/orders/${order._id}</a>`,
-          }),
-        }),
+    if (!order) throw new AppError('Order not found.', 404);
+    if (order.customer.toString() !== customerId.toString()) {
+      throw new AppError('You do not have access to this order.', 403);
+    }
+
+    return order;
+  }
+
+  /**
+   * Cancel an order (customer can only cancel pending/confirmed orders).
+   */
+  async cancelOrder(customerId, orderId, reason) {
+    const order = await orderRepository.findById(orderId);
+
+    if (!order) throw new AppError('Order not found.', 404);
+    if (order.customer.toString() !== customerId.toString()) {
+      throw new AppError('You do not have access to this order.', 403);
+    }
+
+    const cancellableStatuses = ['pending', 'confirmed'];
+    if (!cancellableStatuses.includes(order.status)) {
+      throw new AppError(
+        `Cannot cancel an order with status "${order.status}". Please contact support.`,
+        400
       );
     }
 
-    await Promise.allSettled(tasks);
+    const updated = await orderRepository.updateById(orderId, {
+      status: 'cancelled',
+      cancelReason: reason || 'Cancelled by customer',
+      cancelledAt: new Date(),
+    });
+
+    // Restore stock for tracked products — non-blocking, mirrors the
+    // decrement done on order creation.
+    Promise.all(
+      (order.items || []).map((item) =>
+        productRepository.restoreStock(item.product, item.quantity).catch(() => {})
+      )
+    );
+
+    return updated;
+  }
+
+  // ─── Admin operations ──────────────────────────────────────────────────
+
+  /**
+   * Get all orders for admin with pagination, filtering, and search.
+   */
+  async adminGetOrders(query) {
+    return orderRepository.findAdminOrders(query);
+  }
+
+  /**
+   * Get a single order by ID for admin (no customer scope restriction).
+   */
+  async adminGetOrderById(orderId) {
+    const order = await orderRepository.findById(orderId, {
+      populate: [
+        { path: 'customer', select: 'firstName lastName email phone companyName' },
+        { path: 'items.product', select: 'name slug images pricing category' },
+      ],
+    });
+    if (!order) throw new AppError('Order not found.', 404);
+    return order;
+  }
+
+  /**
+   * Update order status and/or add admin notes.
+   */
+  async adminUpdateOrder(orderId, { status, paymentStatus, adminNotes, trackingNumber, deliveredAt }) {
+    const order = await orderRepository.findById(orderId);
+    if (!order) throw new AppError('Order not found.', 404);
+
+    const updateData = {};
+    if (status) {
+      const validTransitions = this._getValidStatusTransitions(order.status);
+      if (!validTransitions.includes(status)) {
+        throw new AppError(
+          `Cannot transition order from "${order.status}" to "${status}".`,
+          400
+        );
+      }
+      updateData.status = status;
+      if (status === 'delivered') updateData.deliveredAt = deliveredAt || new Date();
+      if (status === 'cancelled') updateData.cancelledAt = new Date();
+    }
+    if (paymentStatus) updateData.paymentStatus = paymentStatus;
+    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
+
+    const updated = await orderRepository.updateById(orderId, updateData);
+
+    // Send realtime notification to customer when status changes
+    if (status && order.customer) {
+      NotificationService.orderStatusChanged(order.customer, order.orderNumber, status).catch(() => {});
+    }
+
+    // Restore stock if an admin cancels an order that wasn't already cancelled
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      Promise.all(
+        (order.items || []).map((item) =>
+          productRepository.restoreStock(item.product, item.quantity).catch(() => {})
+        )
+      );
+    }
+
+    return updated;
+  }
+
+  /**
+   * Define allowed status transitions for validation.
+   */
+  _getValidStatusTransitions(currentStatus) {
+    const transitions = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
+      shipped: ['out_for_delivery', 'delivered'],
+      out_for_delivery: ['delivered'],
+      delivered: ['refunded'],
+      cancelled: ['refunded'],
+      refunded: [],
+    };
+    return transitions[currentStatus] || [];
   }
 }
 
 module.exports = new OrderService();
-module.exports.STATUS_LABELS = STATUS_LABELS;

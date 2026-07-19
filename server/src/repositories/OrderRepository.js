@@ -7,81 +7,67 @@ class OrderRepository extends BaseRepository {
   }
 
   /**
-   * Orders belonging to a single customer, with search/status/date filters —
-   * used by the customer-facing Order History page.
+   * Find orders for a specific customer with pagination.
+   * @param {string} customerId
+   * @param {object} query - req.query
    */
-  async findCustomerOrders(customerId, query) {
+  async findByCustomer(customerId, query = {}) {
     const filter = { customer: customerId };
-    this._applyStatusAndDateFilters(filter, query);
-
-    if (query.search) {
-      filter.$or = [
-        { orderNumber: { $regex: query.search, $options: 'i' } },
-        { 'items.productName': { $regex: query.search, $options: 'i' } },
-      ];
-    }
-
-    return this.findMany(filter, query, { populate: { path: 'items.product', select: 'name images' } });
-  }
-
-  async findByIdForCustomer(orderId, customerId) {
-    return this.model.findOne({ _id: orderId, customer: customerId }).populate('items.product', 'name images');
-  }
-
-  /** Admin-facing list — all customers, same filters, plus customer name/phone search. */
-  async findAdminOrders(query) {
-    const filter = {};
-    this._applyStatusAndDateFilters(filter, query);
-
-    if (query.search) {
-      filter.$or = [
-        { orderNumber: { $regex: query.search, $options: 'i' } },
-        { customerName: { $regex: query.search, $options: 'i' } },
-        { customerPhone: { $regex: query.search, $options: 'i' } },
-      ];
-    }
-
-    return this.findMany(filter, query, { populate: { path: 'customer', select: 'name email phone' } });
-  }
-
-  /** Appends a status change + history entry — mirrors InquiryRepository.appendStatusUpdate. */
-  async appendStatusUpdate(id, { status, note }, userId) {
-    const order = await this.model.findById(id);
-    if (!order) return null;
-
-    if (status) {
-      order.status = status;
-      order.statusHistory.push({ status, note, changedBy: userId || null });
-    }
-
-    await order.save();
-    await order.populate('items.product', 'name images');
-    return order;
-  }
-
-  _applyStatusAndDateFilters(filter, query) {
     if (query.status) filter.status = query.status;
-    if (query.dateFrom || query.dateTo) {
-      filter.createdAt = {};
-      if (query.dateFrom) filter.createdAt.$gte = new Date(query.dateFrom);
-      if (query.dateTo) {
-        // Include the entire end date, not just its midnight instant.
-        const end = new Date(query.dateTo);
-        end.setHours(23, 59, 59, 999);
-        filter.createdAt.$lte = end;
-      }
-    }
+    return this.findMany(filter, query, {
+      populate: { path: 'items.product', select: 'name slug images' },
+      sort: { createdAt: -1 },
+    });
   }
 
-  /** Counts grouped by status for a single customer — powers the dashboard cards. */
-  async countByStatusForCustomer(customerId) {
-    const rows = await this.model.aggregate([
-      { $match: { customer: customerId } },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
-    const counts = rows.reduce((acc, r) => ({ ...acc, [r._id]: r.count }), {});
-    const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
-    return { total, counts };
+  /**
+   * Find a single order by order number.
+   * @param {string} orderNumber
+   */
+  async findByOrderNumber(orderNumber) {
+    return this.findOne({ orderNumber }, {
+      populate: [
+        { path: 'customer', select: 'firstName lastName email phone' },
+        { path: 'items.product', select: 'name slug images pricing' },
+      ],
+    });
+  }
+
+  /**
+   * Find all orders for admin with pagination, search, and status filter.
+   * @param {object} query - req.query
+   */
+  async findAdminOrders(query = {}) {
+    const filter = {};
+    if (query.status) filter.status = query.status;
+    if (query.paymentStatus) filter.paymentStatus = query.paymentStatus;
+    if (query.paymentMethod) filter.paymentMethod = query.paymentMethod;
+    if (query.search) {
+      filter.$or = [
+        { orderNumber: { $regex: query.search, $options: 'i' } },
+      ];
+    }
+    return this.findMany(filter, query, {
+      populate: { path: 'customer', select: 'firstName lastName email phone' },
+      sort: { createdAt: -1 },
+    });
+  }
+
+  /**
+   * Generate a unique sequential order number like BRK-202407-00001.
+   */
+  async generateOrderNumber() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const prefix = `BRK-${year}${month}-`;
+
+    // Count existing orders this month and increment
+    const startOfMonth = new Date(year, now.getMonth(), 1);
+    const count = await this.count({ createdAt: { $gte: startOfMonth } });
+    const sequence = String(count + 1).padStart(5, '0');
+
+    return `${prefix}${sequence}`;
   }
 }
 

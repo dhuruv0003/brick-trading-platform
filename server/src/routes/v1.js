@@ -10,12 +10,13 @@ const orderController = require('../controllers/orderController');
 const customerController = require('../controllers/customerController');
 const { protect } = require('../middleware/auth');
 const { restrictTo } = require('../middleware/rbac');
-const { upload } = require('../middleware/upload');
+const { uploadToMemory } = require('../middleware/upload');
 const { publicLimiter, formLimiter, aiLimiter } = require('../middleware/rateLimiter');
 
 // ─── Public routes ───────────────────────────────────────────────────────────
 router.get('/products', publicLimiter, productController.getProducts);
 router.get('/products/:slug', publicLimiter, productController.getProduct);
+router.get('/products/:slug/reviews', publicLimiter, require('../controllers/reviewController').getProductReviews);
 
 router.get('/categories', publicLimiter, categoryController.getCategories);
 
@@ -110,8 +111,36 @@ router.patch('/admin/users/:id', restrictTo('super_admin', 'admin'), adminContro
 router.delete('/admin/users/:id', restrictTo('super_admin'), adminController.deleteUser);
 
 // File Upload
-router.post('/admin/upload', restrictTo('super_admin', 'admin', 'manager', 'staff'), upload.single('file'), adminController.uploadFile);
-router.post('/admin/upload/multiple', restrictTo('super_admin', 'admin', 'manager', 'staff'), upload.array('files', 10), adminController.uploadMultipleFiles);
+router.post('/admin/upload', restrictTo('super_admin', 'admin', 'manager', 'staff'), uploadToMemory.single('file'), adminController.uploadFile);
+router.post('/admin/upload/multiple', restrictTo('super_admin', 'admin', 'manager', 'staff'), uploadToMemory.array('files', 10), adminController.uploadMultipleFiles);
+router.delete('/admin/upload', restrictTo('super_admin', 'admin', 'manager', 'staff'), adminController.deleteFile);
+
+// Admin - Order Management
+const orderController = require('../controllers/orderController');
+router.get('/admin/orders', restrictTo('super_admin', 'admin', 'manager', 'staff'), orderController.adminGetOrders);
+router.get('/admin/orders/:id', restrictTo('super_admin', 'admin', 'manager', 'staff'), orderController.adminGetOrder);
+router.patch('/admin/orders/:id', restrictTo('super_admin', 'admin', 'manager'), orderController.adminUpdateOrder);
+
+// Admin - Customer Management
+const CustomerRepository = require('../repositories/CustomerRepository');
+const catchAsync = require('../utils/catchAsync');
+const ApiResponse = require('../utils/apiResponse');
+
+router.get('/admin/customers', restrictTo('super_admin', 'admin', 'manager', 'staff'), catchAsync(async (req, res) => {
+  const { data, total, page, limit } = await CustomerRepository.findCustomers(req.query);
+  ApiResponse.paginated(res, { data, total, page, limit });
+}));
+
+router.get('/admin/customers/:id', restrictTo('super_admin', 'admin', 'manager', 'staff'), catchAsync(async (req, res) => {
+  const customer = await CustomerRepository.findById(req.params.id);
+  if (!customer) throw new (require('../utils/AppError'))('Customer not found', 404);
+  ApiResponse.success(res, { data: { customer } });
+}));
+
+router.patch('/admin/customers/:id', restrictTo('super_admin', 'admin', 'manager'), catchAsync(async (req, res) => {
+  const customer = await CustomerRepository.updateById(req.params.id, req.body);
+  ApiResponse.success(res, { data: { customer }, message: 'Customer updated successfully.' });
+}));
 
 // AI Admin tools
 router.post('/admin/ai/generate-blog', restrictTo('super_admin', 'admin', 'manager'), aiLimiter, aiController.generateBlog);

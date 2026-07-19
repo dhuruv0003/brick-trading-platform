@@ -21,7 +21,6 @@ const seed = async () => {
     await mongoose.connect(config.mongoUri);
     console.log('Connected to MongoDB for seeding...');
 
-<<<<<<< HEAD
     const force = process.argv.includes('--force');
 
     // Safety check: don't wipe/re-seed a database that already has data.
@@ -39,8 +38,6 @@ const seed = async () => {
       }
     }
 
-=======
->>>>>>> e85f883 (First Commit)
     // Clear existing data
     await Promise.all([
       User.deleteMany(), Category.deleteMany(), Product.deleteMany(),
@@ -427,9 +424,4 @@ const seed = async () => {
   }
 };
 
-<<<<<<< HEAD
 seed();
-=======
-seed();
->>>>>>> e85f883 (First Commit)
-

@@ -61,9 +61,12 @@ export function getApiErrorMessage(error, fallback = 'Something went wrong. Plea
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('brickpro_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      if (config.url && config.url.startsWith('/customer')) {
+        const token = localStorage.getItem('brickpro_customer_token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        const token = localStorage.getItem('brickpro_token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
       }
     }
     return config;
@@ -77,10 +80,22 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('brickpro_token');
-        localStorage.removeItem('brickpro_user');
-        if (window.location.pathname.startsWith('/admin')) {
-          window.location.href = '/admin/login';
+        if (error.config?.url && error.config.url.startsWith('/customer')) {
+          localStorage.removeItem('brickpro_customer_token');
+          localStorage.removeItem('brickpro_customer');
+          sessionStorage.removeItem('brickpro_customer_token');
+          sessionStorage.removeItem('brickpro_customer');
+          if (window.location.pathname.startsWith('/account') || window.location.pathname.startsWith('/checkout')) {
+            window.location.href = '/auth/login?error=session_expired';
+          }
+        } else {
+          localStorage.removeItem('brickpro_token');
+          localStorage.removeItem('brickpro_user');
+          sessionStorage.removeItem('brickpro_token');
+          sessionStorage.removeItem('brickpro_user');
+          if (window.location.pathname.startsWith('/admin')) {
+            window.location.href = '/admin/login?error=session_expired';
+          }
         }
       }
     }
@@ -232,6 +247,24 @@ export const uploadAPI = {
   multiple: (formData) => api.post('/admin/upload/multiple', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  delete: (publicId) => api.delete('/admin/upload', { data: { publicId } }),
+};
+
+// Reviews (public fetch + authenticated customer CRUD)
+export const reviewsAPI = {
+  getForProduct: (slug, params) => api.get(`/products/${slug}/reviews`, { params }),
+  getMy: () => api.get('/customer/reviews/my'),
+  create: (data) => api.post('/customer/reviews', data),
+  update: (id, data) => api.patch(`/customer/reviews/${id}`, data),
+  delete: (id) => api.delete(`/customer/reviews/${id}`),
+};
+
+// Notifications
+export const notificationsAPI = {
+  getAll: () => api.get('/customer/notifications'),
+  markRead: (id) => api.patch(`/customer/notifications/${id}/read`),
+  markAllRead: () => api.patch('/customer/notifications/read-all'),
+  delete: (id) => api.delete(`/customer/notifications/${id}`),
 };
 
 // AI
@@ -241,6 +274,56 @@ export const aiAPI = {
   generateBlog: (data) => api.post('/admin/ai/generate-blog', data),
   replySuggestion: (data) => api.post('/admin/ai/reply-suggestion', data),
   insights: () => api.get('/admin/ai/insights'),
+};
+
+// Customer Auth
+export const customerAuthAPI = {
+  register: (data) => api.post('/customer/auth/register', data),
+  login: (data) => api.post('/customer/auth/login', data),
+  logout: () => api.post('/customer/auth/logout'),
+  getMe: () => api.get('/customer/auth/me'),
+  updatePassword: (data) => api.patch('/customer/auth/update-password', data),
+  updateProfile: (data) => api.patch('/customer/auth/update-profile', data),
+  forgotPassword: (data) => api.post('/customer/auth/forgot-password', data),
+  resetPassword: (token, data) => api.post(`/customer/auth/reset-password/${token}`, data),
+};
+
+// Customer Orders
+export const ordersAPI = {
+  getAll: (params) => api.get('/customer/orders', { params }),
+  getOne: (id) => api.get(`/customer/orders/${id}`),
+  create: (data) => api.post('/customer/orders', data),
+  cancel: (id, data) => api.patch(`/customer/orders/${id}/cancel`, data),
+};
+
+// Customer Wishlist
+export const wishlistAPI = {
+  get: () => api.get('/customer/wishlist'),
+  add: (data) => api.post('/customer/wishlist', data),
+  remove: (productId) => api.delete(`/customer/wishlist/${productId}`),
+};
+
+// Customer Addresses
+export const customerAddressAPI = {
+  getAll: () => api.get('/customer/addresses'),
+  create: (data) => api.post('/customer/addresses', data),
+  update: (id, data) => api.patch(`/customer/addresses/${id}`, data),
+  delete: (id) => api.delete(`/customer/addresses/${id}`),
+  setDefault: (id) => api.patch(`/customer/addresses/${id}/set-default`),
+};
+
+// Admin Orders
+export const adminOrdersAPI = {
+  getAll: (params) => api.get('/admin/orders', { params }),
+  getOne: (id) => api.get(`/admin/orders/${id}`),
+  update: (id, data) => api.patch(`/admin/orders/${id}`, data),
+};
+
+// Admin Customers
+export const adminCustomersAPI = {
+  getAll: (params) => api.get('/admin/customers', { params }),
+  getOne: (id) => api.get(`/admin/customers/${id}`),
+  update: (id, data) => api.patch(`/admin/customers/${id}`, data),
 };
 
 export default api;

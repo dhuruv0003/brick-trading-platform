@@ -1,22 +1,8 @@
 const multer = require('multer');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const AppError = require('../utils/AppError');
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads');
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
-  },
-});
 
 const fileFilter = (req, file, cb) => {
   if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
@@ -26,13 +12,10 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: MAX_FILE_SIZE },
-});
-
-// Memory storage for in-flight processing (e.g., sharp resize)
+// All admin uploads (product/gallery images) go to Cloudinary now — see
+// config/cloudinary.js and services/UploadService.js. Files are held in
+// memory only long enough to be streamed to Cloudinary; nothing is written
+// to local disk, so there's no uploads/ directory dependency anymore.
 const memoryStorage = multer.memoryStorage();
 const uploadToMemory = multer({
   storage: memoryStorage,
@@ -40,4 +23,4 @@ const uploadToMemory = multer({
   limits: { fileSize: MAX_FILE_SIZE },
 });
 
-module.exports = { upload, uploadToMemory };
+module.exports = { uploadToMemory };

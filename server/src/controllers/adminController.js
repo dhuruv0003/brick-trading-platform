@@ -156,11 +156,23 @@ exports.deleteUser = catchAsync(async (req, res) => {
 
 // ========== FILE UPLOAD ==========
 exports.uploadFile = catchAsync(async (req, res) => {
-  const file = uploadService.handleSingle(req.file);
+  const file = await uploadService.handleSingle(req.file);
   ApiResponse.success(res, { data: file, message: 'File uploaded successfully.' });
 });
 
 exports.uploadMultipleFiles = catchAsync(async (req, res) => {
-  const files = uploadService.handleMultiple(req.files);
+  const files = await uploadService.handleMultiple(req.files);
   ApiResponse.success(res, { data: { files }, message: `${files.length} file(s) uploaded.` });
+});
+
+/**
+ * Deletes an image from Cloudinary storage by its public_id. Intended for
+ * ad-hoc cleanup from the admin UI (e.g. removing a single image from a
+ * product's image list, or a gallery item's image, before the containing
+ * record itself is saved/deleted).
+ */
+exports.deleteFile = catchAsync(async (req, res) => {
+  const { publicId } = req.body;
+  await uploadService.deleteByPublicId(publicId);
+  ApiResponse.success(res, { message: 'Image deleted successfully.' });
 });

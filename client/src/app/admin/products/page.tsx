@@ -27,15 +27,18 @@ import {
   Avatar,
   TablePagination,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
+import CloseIcon from '@mui/icons-material/Close';
 import { productsAPI, categoriesAPI, uploadAPI } from '../../../services/api';
 import useAdminResource from '../../../hooks/useAdminResource';
 import ConfirmDialog from '../../../components/admin/ConfirmDialog';
+import { useSnackbar } from 'notistack';
 
 const EMPTY_FORM = {
   name: '',
@@ -44,13 +47,15 @@ const EMPTY_FORM = {
   shortDescription: '',
   specs: { size: '', weight: '', type: '', color: '', finish: '', strength: '' },
   pricing: { retail: 0, wholesale: 0, bulk: 0, unit: 'per 1000' },
-  images: [] as { url: string; alt: string; isPrimary: boolean }[],
+  images: [] as { url: string; publicId?: string; alt: string; isPrimary: boolean }[],
   inStock: true,
+  stockQuantity: 0,
   isFeatured: false,
   isActive: true,
 };
 
 export default function AdminProductsPage() {
+  const { enqueueSnackbar } = useSnackbar();
   const {
     items: products,
     meta,
@@ -76,7 +81,9 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [uploading, setUploading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deletingImageIndex, setDeletingImageIndex] = useState<number | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [searchInput, setSearchInput] = useState('');
 
   useEffect(() => {
@@ -102,6 +109,7 @@ export default function AdminProductsPage() {
       pricing: { ...EMPTY_FORM.pricing, ...product.pricing },
       images: product.images || [],
       inStock: product.inStock ?? true,
+      stockQuantity: product.stockQuantity ?? 0,
       isFeatured: product.isFeatured ?? false,
       isActive: product.isActive ?? true,
     });
@@ -116,14 +124,49 @@ export default function AdminProductsPage() {
     setUploading(true);
     try {
       const res = await uploadAPI.single(fd);
-      const url = res.data.data.url;
+      const { url, publicId } = res.data.data;
       setForm((f) => ({
         ...f,
-        images: [...f.images, { url, alt: f.name, isPrimary: f.images.length === 0 }],
+        images: [...f.images, { url, publicId, alt: f.name, isPrimary: f.images.length === 0 }],
       }));
+      enqueueSnackbar('Image uploaded successfully.', { variant: 'success' });
+    } catch (err: any) {
+      // Previously this failure was completely silent (no catch block at
+      // all) — a slow/failed Cloudinary upload would leave the user
+      // staring at a stuck "Uploading..." button with zero feedback.
+      enqueueSnackbar(err.response?.data?.message || 'Image upload failed. Please try again.', { variant: 'error' });
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  /**
+   * Removes an image both from Cloudinary storage and from the form's
+   * local state. If the image has no publicId (e.g. it was added before
+   * this field existed, or came from external data), it's only removed
+   * from the form — there's nothing to delete remotely in that case.
+   */
+  const handleImageDelete = async (index: number) => {
+    const image = form.images[index];
+    setDeletingImageIndex(index);
+    try {
+      if (image.publicId) {
+        await uploadAPI.delete(image.publicId);
+      }
+      setForm((f) => {
+        const remaining = f.images.filter((_, i) => i !== index);
+        // If the removed image was primary, promote the new first image.
+        if (image.isPrimary && remaining.length > 0) {
+          remaining[0] = { ...remaining[0], isPrimary: true };
+        }
+        return { ...f, images: remaining };
+      });
+      enqueueSnackbar('Image removed.', { variant: 'success' });
+    } catch (err: any) {
+      enqueueSnackbar(err.response?.data?.message || 'Failed to delete image. Please try again.', { variant: 'error' });
+    } finally {
+      setDeletingImageIndex(null);
     }
   };
 
@@ -201,6 +244,11 @@ export default function AdminProductsPage() {
                 <TableCell>₹{p.pricing?.retail ?? 0}</TableCell>
                 <TableCell>
                   <Chip size="small" label={p.inStock ? 'In Stock' : 'Out of Stock'} color={p.inStock ? 'success' : 'default'} />
+                  {p.stockQuantity > 0 && (
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      ({p.stockQuantity} units)
+                    </Typography>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Chip size="small" label={p.isActive ? 'Active' : 'Inactive'} color={p.isActive ? 'primary' : 'default'} variant="outlined" />
@@ -212,7 +260,7 @@ export default function AdminProductsPage() {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(p._id)}>
+                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(p)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
@@ -342,7 +390,39 @@ export default function AdminProductsPage() {
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
                 {form.images.map((img, idx) => (
-                  <Avatar key={idx} src={img.url} variant="rounded" sx={{ width: 64, height: 64 }} />
+                  <Box key={img.publicId || img.url || idx} sx={{ position: 'relative' }}>
+                    <Avatar
+                      src={img.url}
+                      variant="rounded"
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        border: img.isPrimary ? '2px solid' : 'none',
+                        borderColor: 'primary.main',
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => handleImageDelete(idx)}
+                      disabled={deletingImageIndex === idx}
+                      sx={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        bgcolor: 'error.main',
+                        color: '#fff',
+                        width: 20,
+                        height: 20,
+                        '&:hover': { bgcolor: 'error.dark' },
+                      }}
+                    >
+                      {deletingImageIndex === idx ? (
+                        <CircularProgress size={12} sx={{ color: '#fff' }} />
+                      ) : (
+                        <CloseIcon sx={{ fontSize: 14 }} />
+                      )}
+                    </IconButton>
+                  </Box>
                 ))}
               </Box>
               <Button component="label" variant="outlined" size="small" disabled={uploading}>
@@ -355,6 +435,17 @@ export default function AdminProductsPage() {
               <FormControlLabel
                 control={<Switch checked={form.inStock} onChange={(e) => setForm({ ...form, inStock: e.target.checked })} />}
                 label="In Stock"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField
+                label="Stock Quantity"
+                type="number"
+                fullWidth
+                value={form.stockQuantity}
+                onChange={(e) => setForm({ ...form, stockQuantity: Math.max(0, Number(e.target.value)) })}
+                inputProps={{ min: 0 }}
+                helperText="Leave 0 if you don't track exact quantity for this item"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
@@ -389,9 +480,33 @@ export default function AdminProductsPage() {
         message="Are you sure you want to delete this product? This action cannot be undone."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={async () => {
-          if (deleteTarget) await deleteMutation.mutateAsync(deleteTarget);
-          setDeleteTarget(null);
+          if (!deleteTarget) return;
+          setDeletingProduct(true);
+          try {
+            // Delete the DB record first, same reasoning as the gallery
+            // delete flow: if this fails, nothing on Cloudinary has been
+            // touched yet, so there's no inconsistent partial state.
+            await deleteMutation.mutateAsync(deleteTarget._id);
+
+            const imagesWithPublicId = (deleteTarget.images || []).filter((img: any) => img.publicId);
+            if (imagesWithPublicId.length > 0) {
+              const results = await Promise.allSettled(
+                imagesWithPublicId.map((img: any) => uploadAPI.delete(img.publicId)),
+              );
+              const failedCount = results.filter((r) => r.status === 'rejected').length;
+              if (failedCount > 0) {
+                enqueueSnackbar(
+                  `Product deleted, but ${failedCount} of ${imagesWithPublicId.length} image(s) could not be removed from storage.`,
+                  { variant: 'warning' },
+                );
+              }
+            }
+          } finally {
+            setDeletingProduct(false);
+            setDeleteTarget(null);
+          }
         }}
+        confirmDisabled={deletingProduct}
       />
     </Box>
   );

@@ -44,6 +44,7 @@ const productSchema = new mongoose.Schema(
     images: [
       {
         url: { type: String },
+        publicId: { type: String, default: '' }, // Cloudinary public_id, required to delete the asset later
         alt: { type: String, default: '' },
         isPrimary: { type: Boolean, default: false },
       },
@@ -51,6 +52,21 @@ const productSchema = new mongoose.Schema(
     inStock: {
       type: Boolean,
       default: true,
+    },
+    // Numeric stock tracking, added on top of the original boolean `inStock`
+    // flag. `inStock` is kept for backward compatibility with existing
+    // display/filtering logic. stockQuantity is the new source of truth for
+    // quantity-based validation (cart limits, checkout, order creation).
+    //
+    // Backward-compatibility rule: products created before this field
+    // existed will have stockQuantity = 0. Treat 0 as "quantity not
+    // tracked for this product" rather than "zero units available" —
+    // fall back to the boolean inStock check in that case so existing
+    // inventory isn't silently blocked from being ordered.
+    stockQuantity: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     isFeatured: {
       type: Boolean,
@@ -69,6 +85,16 @@ const productSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

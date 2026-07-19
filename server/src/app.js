@@ -108,6 +108,8 @@ app.get('/health', (req, res) => {
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/customer/auth', require('./routes/customerAuth'));
+app.use('/api/v1/customer', require('./routes/customer'));
 app.use('/api/v1', v1Routes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────

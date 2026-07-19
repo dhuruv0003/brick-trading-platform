@@ -65,7 +65,7 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
 
-  return { user, token, isAuthenticated, loading, error, checking, login, logout };
+  return { user, token, isAuthenticated, loading, error, checking, hydrated, login, logout };
 }
 
 export default useAuth;

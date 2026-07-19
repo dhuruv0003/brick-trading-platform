@@ -56,8 +56,4 @@ Thumbs.db
 .npm
 
 # TypeScript (if added later)
-<<<<<<< HEAD
 *.tsbuildinfo
-=======
-*.tsbuildinfo
->>>>>>> e85f883 (First Commit)

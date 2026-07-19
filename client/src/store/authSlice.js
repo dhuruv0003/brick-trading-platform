@@ -22,8 +22,14 @@ const authSlice = createSlice({
     hydrateFromStorage: (state) => {
       if (typeof window === 'undefined') return;
       try {
-        const token = localStorage.getItem('brickpro_token');
-        const rawUser = localStorage.getItem('brickpro_user');
+        let token = localStorage.getItem('brickpro_token');
+        let rawUser = localStorage.getItem('brickpro_user');
+        
+        if (!token) {
+          token = sessionStorage.getItem('brickpro_token');
+          rawUser = sessionStorage.getItem('brickpro_user');
+        }
+
         state.token = token || null;
         state.user = rawUser ? JSON.parse(rawUser) : null;
         state.isAuthenticated = !!token;
@@ -37,14 +43,21 @@ const authSlice = createSlice({
     },
     loginStart: (state) => { state.loading = true; state.error = null; },
     loginSuccess: (state, action) => {
+      const { user, token, rememberMe } = action.payload;
       state.loading = false;
-      state.user = action.payload.user;
-      state.token = action.payload.token;
+      state.user = user;
+      state.token = token;
       state.isAuthenticated = true;
       state.error = null;
       if (typeof window !== 'undefined') {
-        localStorage.setItem('brickpro_token', action.payload.token);
-        localStorage.setItem('brickpro_user', JSON.stringify(action.payload.user));
+        const storage = rememberMe ? localStorage : sessionStorage;
+        const otherStorage = rememberMe ? sessionStorage : localStorage;
+        
+        otherStorage.removeItem('brickpro_token');
+        otherStorage.removeItem('brickpro_user');
+        
+        storage.setItem('brickpro_token', token);
+        storage.setItem('brickpro_user', JSON.stringify(user));
       }
     },
     loginFailure: (state, action) => {
@@ -60,12 +73,18 @@ const authSlice = createSlice({
       if (typeof window !== 'undefined') {
         localStorage.removeItem('brickpro_token');
         localStorage.removeItem('brickpro_user');
+        sessionStorage.removeItem('brickpro_token');
+        sessionStorage.removeItem('brickpro_user');
       }
     },
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
       if (typeof window !== 'undefined') {
-        localStorage.setItem('brickpro_user', JSON.stringify(state.user));
+        if (sessionStorage.getItem('brickpro_token')) {
+          sessionStorage.setItem('brickpro_user', JSON.stringify(state.user));
+        } else {
+          localStorage.setItem('brickpro_user', JSON.stringify(state.user));
+        }
       }
     },
     clearError: (state) => { state.error = null; },

@@ -11,6 +11,10 @@ const gallerySchema = new mongoose.Schema(
       type: String,
       required: [true, 'Image URL is required'],
     },
+    publicId: {
+      type: String,
+      default: '', // Cloudinary public_id, required to delete the asset later
+    },
     thumbnail: {
       type: String,
       default: null,
