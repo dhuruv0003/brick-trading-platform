@@ -8,7 +8,7 @@ import {
   Paper,
   TextField,
   InputAdornment,
-  Table,
+  Table, TableContainer,
   TableHead,
   TableBody,
   TableRow,
@@ -202,7 +202,9 @@ export default function AdminProductsPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
           />
         </Box>
-        <Table>
+        <TableContainer>
+
+          <Table>
           <TableHead>
             <TableRow>
               <TableCell>Image</TableCell>
@@ -268,7 +270,9 @@ export default function AdminProductsPage() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+
+        </TableContainer>
         <TablePagination
           component="div"
           count={meta?.total ?? 0}

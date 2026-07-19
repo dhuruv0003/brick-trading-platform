@@ -7,7 +7,7 @@ import {
   Box,
   Typography,
   Chip,
-  Table,
+  Table, TableContainer,
   TableHead,
   TableBody,
   TableRow,
@@ -147,7 +147,9 @@ export default function AdminDashboardPage() {
                 Recent Orders
               </Typography>
             </Box>
-            <Table>
+            <TableContainer>
+
+              <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Order #</TableCell>
@@ -187,7 +189,9 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+
+            </TableContainer>
           </Paper>
         </Grid>
 

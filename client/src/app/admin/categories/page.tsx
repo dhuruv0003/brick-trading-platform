@@ -7,7 +7,7 @@ import {
   Paper,
   TextField,
   InputAdornment,
-  Table,
+  Table, TableContainer,
   TableHead,
   TableBody,
   TableRow,
@@ -104,7 +104,9 @@ export default function AdminCategoriesPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
           />
         </Box>
-        <Table>
+        <TableContainer>
+
+          <Table>
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
@@ -153,7 +155,9 @@ export default function AdminCategoriesPage() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+
+        </TableContainer>
         <TablePagination
           component="div"
           count={meta?.total ?? categories.length}

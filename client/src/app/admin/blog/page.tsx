@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Button, Paper, TextField, InputAdornment, Table, TableHead, TableBody, TableRow,
+  Box, Typography, Button, Paper, TextField, InputAdornment, Table, TableContainer, TableHead, TableBody, TableRow,
   TableCell, Chip, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions, Grid2 as Grid,
   Switch, FormControlLabel, TablePagination, Tooltip,
 } from '@mui/material';
@@ -73,7 +73,9 @@ export default function AdminBlogPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
           />
         </Box>
-        <Table>
+        <TableContainer>
+
+          <Table>
           <TableHead>
             <TableRow>
               <TableCell>Title</TableCell>
@@ -107,7 +109,9 @@ export default function AdminBlogPage() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+
+        </TableContainer>
         <TablePagination
           component="div"
           count={meta?.total ?? 0}
