@@ -10,6 +10,7 @@ import useCart from '../../hooks/useCart';
 import useCustomerAuth from '../../hooks/useCustomerAuth';
 import { customerAddressAPI, ordersAPI } from '../../services/api';
 import CustomerGuard from '../../components/guards/CustomerGuard';
+import { getQuantityRules, getProductPricingType, describeRule } from '../../lib/quantityRules';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -81,6 +82,22 @@ export default function CheckoutPage() {
         .map((i) => `${i.product.name} (only ${i.product.stockQuantity} left, ${i.quantity} requested)`)
         .join(', ');
       setError(`The following items exceed available stock: ${details}. Please reduce the quantity in your cart before proceeding.`);
+      setSubmitting(false);
+      return;
+    }
+
+    // Quantity-increment rule check — guards against stale localStorage
+    // cart entries created before this rule existed. The server enforces
+    // this independently regardless of what the client sends.
+    const invalidQuantity = itemsList.filter((item) => {
+      const pricingType = getProductPricingType(item.product);
+      return !getQuantityRules(pricingType).isValidQuantity(item.quantity);
+    });
+    if (invalidQuantity.length > 0) {
+      const details = invalidQuantity
+        .map((i) => `${i.product.name} (${describeRule(getProductPricingType(i.product))})`)
+        .join(', ');
+      setError(`The following items have an invalid quantity: ${details}. Please adjust the quantity in your cart before proceeding.`);
       setSubmitting(false);
       return;
     }

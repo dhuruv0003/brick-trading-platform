@@ -40,6 +40,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Admin/manager/staff clients join a single shared room so a "new order"
+  // notification reaches every logged-in admin user at once. Trust model
+  // mirrors the customer 'join' event above — the client only emits this
+  // once its own admin REST calls (already JWT-protected) have succeeded,
+  // there's no separate socket-level auth check here.
+  socket.on('joinAdmin', () => {
+    socket.join('admin');
+    logger.info(`Socket joined admin room: ${socket.id}`);
+  });
+
   socket.on('disconnect', () => {
     logger.info(`Socket disconnected: ${socket.id}`);
   });

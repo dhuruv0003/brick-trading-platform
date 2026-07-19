@@ -4,6 +4,11 @@
 process.env.CLOUDINARY_CLOUD_NAME = 'demo';
 process.env.CLOUDINARY_API_KEY = '1234';
 process.env.CLOUDINARY_API_SECRET = 'abcd';
+// config/cloudinary.js requires config/env.js, which exits the process if
+// these are missing — set them so this file doesn't depend on another test
+// file happening to run first and set them.
+process.env.MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/test';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
 const { buildSignature } = require('../config/cloudinary');
 

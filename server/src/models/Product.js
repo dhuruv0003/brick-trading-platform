@@ -39,7 +39,17 @@ const productSchema = new mongoose.Schema(
       retail: { type: Number, default: 0 },       // per 1000 bricks
       wholesale: { type: Number, default: 0 },
       bulk: { type: Number, default: 0 },
-      unit: { type: String, default: 'per 1000' },
+      unit: { type: String, default: 'per 1000' }, // free-text display label only, e.g. "per 1000 bricks"
+      // Structured pricing type that drives quantity-increment rules
+      // (see server/src/utils/quantityRules.js). Unlike `unit` above,
+      // this is a controlled value, not display text.
+      //  - 'per_brick':   sold as individual bricks; quantity must be a
+      //                   multiple of 500, minimum 500.
+      //  - 'bundle_1000': sold as an indivisible 1000-brick bundle;
+      //                   quantity = number of bundles, minimum 1, step 1.
+      // Defaults to 'per_brick' for backward compatibility with products
+      // created before this field existed.
+      type: { type: String, enum: ['per_brick', 'bundle_1000'], default: 'per_brick' },
     },
     images: [
       {

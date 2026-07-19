@@ -38,6 +38,7 @@ import useCustomerAuth from '../../../hooks/useCustomerAuth';
 import useWishlist from '../../../hooks/useWishlist';
 import ProductCard from '../../../components/products/ProductCard';
 import ReviewsSection from '../../../components/products/ReviewsSection';
+import { getQuantityRules, getProductPricingType, describeRule } from '../../../lib/quantityRules';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&q=80&w=800';
@@ -55,8 +56,11 @@ export default function ProductDetailPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(500);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const pricingType = getProductPricingType(data?.product);
+  const quantityRules = getQuantityRules(pricingType);
 
   useEffect(() => {
     if (slug) fetchProductDetail();
@@ -70,6 +74,9 @@ export default function ProductDetailPage() {
       const res = await productsAPI.getOne(slug as string);
       setData(res.data.data);
       setSelectedImageIndex(0);
+      // Reset quantity to this product's minimum valid quantity (500 for
+      // per-brick products, 1 for a bundle) rather than a hardcoded 1.
+      setQuantity(getQuantityRules(getProductPricingType(res.data.data?.product)).minQuantity);
     } catch {
       setError('Product not found or failed to load.');
     } finally {
@@ -106,7 +113,7 @@ export default function ProductDetailPage() {
 
   const handleRelatedAddToCart = (product: any) => {
     if (!product.inStock) return;
-    addToCart(product, 1);
+    addToCart(product); // defaults to the product's minimum valid quantity
     enqueueSnackbar(`${product.name} added to cart!`, { variant: 'success' });
   };
 
@@ -319,23 +326,23 @@ export default function ProductDetailPage() {
             <Typography variant="body2" color="text.secondary" mb={1}>
               Quantity
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
+                onClick={() => setQuantity((q) => Math.max(quantityRules.minQuantity, q - quantityRules.step))}
+                disabled={quantity <= quantityRules.minQuantity}
                 sx={{ minWidth: 40, px: 1 }}
               >
                 −
               </Button>
-              <Typography sx={{ fontWeight: 700, minWidth: 40, textAlign: 'center' }}>{quantity}</Typography>
+              <Typography sx={{ fontWeight: 700, minWidth: 60, textAlign: 'center' }}>{quantity}</Typography>
               <Button
                 variant="outlined"
                 size="small"
                 onClick={() => {
                   const limit = data?.product?.stockQuantity > 0 ? data.product.stockQuantity : Infinity;
-                  setQuantity((q) => Math.min(limit, q + 1));
+                  setQuantity((q) => Math.min(limit, q + quantityRules.step));
                 }}
                 disabled={data?.product?.stockQuantity > 0 && quantity >= data.product.stockQuantity}
                 sx={{ minWidth: 40, px: 1 }}
@@ -343,6 +350,9 @@ export default function ProductDetailPage() {
                 +
               </Button>
             </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3 }}>
+              {describeRule(pricingType)}
+            </Typography>
 
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               <Button

@@ -136,6 +136,12 @@ router.patch('/admin/customers/:id', restrictTo('super_admin', 'admin', 'manager
   ApiResponse.success(res, { data: { customer }, message: 'Customer updated successfully.' });
 }));
 
+// Admin - Notifications
+const notificationController = require('../controllers/notificationController');
+router.get('/admin/notifications', restrictTo('super_admin', 'admin', 'manager', 'staff'), notificationController.getAdminNotifications);
+router.patch('/admin/notifications/read-all', restrictTo('super_admin', 'admin', 'manager', 'staff'), notificationController.markAllAdminRead);
+router.patch('/admin/notifications/:id/read', restrictTo('super_admin', 'admin', 'manager', 'staff'), notificationController.markAdminRead);
+
 // AI Admin tools
 router.post('/admin/ai/generate-blog', restrictTo('super_admin', 'admin', 'manager'), aiLimiter, aiController.generateBlog);
 router.post('/admin/ai/reply-suggestion', restrictTo('super_admin', 'admin', 'manager', 'staff'), aiLimiter, aiController.replySuggestion);

@@ -247,6 +247,13 @@ export const notificationsAPI = {
   delete: (id) => api.delete(`/customer/notifications/${id}`),
 };
 
+// Admin Notifications
+export const adminNotificationsAPI = {
+  getAll: () => api.get('/admin/notifications'),
+  markRead: (id) => api.patch(`/admin/notifications/${id}/read`),
+  markAllRead: () => api.patch('/admin/notifications/read-all'),
+};
+
 // AI
 export const aiAPI = {
   chat: (data) => api.post('/ai/chat', data),

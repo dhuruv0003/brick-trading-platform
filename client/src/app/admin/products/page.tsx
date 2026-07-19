@@ -46,7 +46,7 @@ const EMPTY_FORM = {
   description: '',
   shortDescription: '',
   specs: { size: '', weight: '', type: '', color: '', finish: '', strength: '' },
-  pricing: { retail: 0, wholesale: 0, bulk: 0, unit: 'per 1000' },
+  pricing: { retail: 0, wholesale: 0, bulk: 0, unit: 'per 1000', type: 'per_brick' },
   images: [] as { url: string; publicId?: string; alt: string; isPrimary: boolean }[],
   inStock: true,
   stockQuantity: 0,
@@ -382,6 +382,24 @@ export default function AdminProductsPage() {
                 value={form.pricing.bulk}
                 onChange={(e) => setForm({ ...form, pricing: { ...form.pricing, bulk: Number(e.target.value) } })}
               />
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                select
+                label="Pricing Type (controls order quantity rules)"
+                fullWidth
+                size="small"
+                value={form.pricing.type || 'per_brick'}
+                onChange={(e) => setForm({ ...form, pricing: { ...form.pricing, type: e.target.value } })}
+                helperText={
+                  form.pricing.type === 'bundle_1000'
+                    ? 'Sold as an indivisible 1000-brick bundle — customers order in whole bundles (min 1).'
+                    : 'Sold as individual bricks — customers must order in multiples of 500 (min 500).'
+                }
+              >
+                <MenuItem value="per_brick">Per Brick (multiples of 500)</MenuItem>
+                <MenuItem value="bundle_1000">1000-Brick Bundle (whole bundles)</MenuItem>
+              </TextField>
             </Grid>
 
             <Grid size={12}>

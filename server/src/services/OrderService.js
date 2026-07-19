@@ -4,6 +4,7 @@ const CustomerAddress = require('../models/CustomerAddress');
 const Customer = require('../models/Customer');
 const AppError = require('../utils/AppError');
 const NotificationService = require('./NotificationService');
+const { getQuantityRules, describeRule } = require('../utils/quantityRules');
 const { sendEmail, renderEmailTemplate } = require('../config/mailer');
 const config = require('../config/env');
 
@@ -68,6 +69,18 @@ class OrderService {
       if (!product.inStock) {
         throw new AppError(`"${product.name}" is currently out of stock.`, 400);
       }
+
+      // Quantity-increment rule check — enforced server-side regardless of
+      // what the client sent, so a raw/bypassed API call can't place an
+      // order with an invalid quantity for the product's pricing type.
+      const { isValidQuantity } = getQuantityRules(product.pricing?.type);
+      if (!isValidQuantity(item.quantity)) {
+        throw new AppError(
+          `Invalid quantity for "${product.name}": ${describeRule(product.pricing?.type)} (received ${item.quantity}).`,
+          400
+        );
+      }
+
       // Quantity-based check — only enforced for products with a tracked
       // stockQuantity (> 0). A stockQuantity of 0 means "not tracked for
       // this product" (backward compatibility), so we fall back to the
@@ -131,8 +144,12 @@ class OrderService {
       )
     );
 
-    // Fire notification (non-blocking)
+    // Fire notifications (non-blocking) — customer's own confirmation and
+    // the admin-facing "new order" alert. `shippingAddress.fullName` is
+    // already on the order, so this avoids an extra Customer lookup just
+    // for the admin message.
     NotificationService.orderPlaced(customerId, orderNumber).catch(() => {});
+    NotificationService.newOrderPlaced(order, resolvedShippingAddress.fullName).catch(() => {});
 
     // Fire order-confirmation emails to the customer and admin — best-effort,
     // never blocks or fails the order response if email sending has issues.
@@ -245,6 +262,11 @@ class OrderService {
       cancelledAt: new Date(),
     });
 
+    // Persisted notification for the customer's own order-history feed —
+    // mirrors the admin-initiated cancellation path in adminUpdateOrder,
+    // which was previously the only place this fired.
+    NotificationService.orderStatusChanged(customerId, order.orderNumber, 'cancelled').catch(() => {});
+
     // Restore stock for tracked products — non-blocking, mirrors the
     // decrement done on order creation.
     Promise.all(
@@ -267,6 +289,10 @@ class OrderService {
 
   /**
    * Get a single order by ID for admin (no customer scope restriction).
+   * Also returns validNextStatuses so the admin UI can present only the
+   * transitions that are actually legal from the order's current status,
+   * rather than guessing or hardcoding a static list that can drift out
+   * of sync with the real state machine enforced in adminUpdateOrder.
    */
   async adminGetOrderById(orderId) {
     const order = await orderRepository.findById(orderId, {
@@ -276,7 +302,10 @@ class OrderService {
       ],
     });
     if (!order) throw new AppError('Order not found.', 404);
-    return order;
+
+    const orderObj = order.toObject ? order.toObject() : order;
+    orderObj.validNextStatuses = this._getValidStatusTransitions(order.status);
+    return orderObj;
   }
 
   /**

@@ -19,6 +19,10 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
+  Badge,
+  Popover,
+  Button,
+  Tooltip,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
@@ -31,7 +35,9 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import SettingsIcon from '@mui/icons-material/Settings';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import useAuth from '../../hooks/useAuth';
+import useAdminNotifications from '../../hooks/useAdminNotifications';
 
 const DRAWER_WIDTH = 260;
 
@@ -53,8 +59,20 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notifAnchorEl, setNotifAnchorEl] = useState<null | HTMLElement>(null);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markRead, markAllRead } = useAdminNotifications();
+
+  const timeAgo = (dateStr: string) => {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
 
   const visibleNav = NAV.filter((item) => !user?.role || item.roles.includes(user.role));
 
@@ -115,7 +133,77 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {NAV.find((n) => isActive(n.path))?.label || 'Admin'}
           </Typography>
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Notifications">
+              <IconButton onClick={(e) => setNotifAnchorEl(e.currentTarget)}>
+                <Badge badgeContent={unreadCount} color="error" max={99}>
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <Popover
+              open={Boolean(notifAnchorEl)}
+              anchorEl={notifAnchorEl}
+              onClose={() => setNotifAnchorEl(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              slotProps={{ paper: { sx: { width: 360, maxHeight: 440 } } }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Notifications
+                </Typography>
+                {unreadCount > 0 && (
+                  <Button size="small" onClick={() => markAllRead()}>
+                    Mark all read
+                  </Button>
+                )}
+              </Box>
+              <Divider />
+              {notifications.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No notifications yet.
+                  </Typography>
+                </Box>
+              ) : (
+                <List sx={{ p: 0, maxHeight: 360, overflowY: 'auto' }}>
+                  {notifications.map((n: any) => (
+                    <Link key={n._id} href={n.link || '#'} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <ListItemButton
+                        onClick={() => {
+                          if (!n.isRead) markRead(n._id);
+                          setNotifAnchorEl(null);
+                        }}
+                        sx={{
+                          alignItems: 'flex-start',
+                          bgcolor: n.isRead ? 'transparent' : 'action.hover',
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Box sx={{ width: '100%' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {!n.isRead && (
+                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', flexShrink: 0 }} />
+                            )}
+                            <Typography variant="body2" fontWeight={n.isRead ? 500 : 700} noWrap>
+                              {n.title}
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                            {n.message}
+                          </Typography>
+                          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 0.25 }}>
+                            {timeAgo(n.createdAt)}
+                          </Typography>
+                        </Box>
+                      </ListItemButton>
+                    </Link>
+                  ))}
+                </List>
+              )}
+            </Popover>
+
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
               <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '0.9rem' }}>
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}

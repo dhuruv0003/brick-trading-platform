@@ -1,11 +1,15 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addItem, removeItem, updateQuantity, clearCart, toggleCart, cartItemCount, cartItemsList } from '../store/cartSlice';
+import { getQuantityRules, getProductPricingType } from '../lib/quantityRules';
 
 const getStockLimit = (product) => {
   const qty = product?.stockQuantity;
   return typeof qty === 'number' && qty > 0 ? qty : Infinity;
 };
+
+/** Re-exported so components don't need to import lib/quantityRules directly. */
+export const getProductQuantityRules = (product) => getQuantityRules(getProductPricingType(product));
 
 export default function useCart() {
   const dispatch = useDispatch();
@@ -20,12 +24,14 @@ export default function useCart() {
    * so callers can show a "only N left in stock" message when the
    * requested quantity exceeded the product's tracked stockQuantity.
    */
-  const add = useCallback((product, quantity = 1) => {
+  const add = useCallback((product, quantity) => {
+    const { minQuantity } = getProductQuantityRules(product);
+    const requestedQuantity = typeof quantity === 'number' ? quantity : minQuantity;
     const limit = getStockLimit(product);
     const existingQty = items[product._id]?.quantity || 0;
-    const requestedTotal = existingQty + quantity;
+    const requestedTotal = existingQty + requestedQuantity;
     const clamped = requestedTotal > limit;
-    dispatch(addItem({ product, quantity }));
+    dispatch(addItem({ product, quantity: requestedQuantity }));
     return { clamped, limit: clamped ? limit : undefined };
   }, [dispatch, items]);
 

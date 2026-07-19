@@ -25,6 +25,7 @@ import useCustomerAuth from '../../hooks/useCustomerAuth';
 import useWishlist from '../../hooks/useWishlist';
 import { useRouter } from 'next/navigation';
 import { useSnackbar } from 'notistack';
+import { getQuantityRules, getProductPricingType } from '../../lib/quantityRules';
 
 export default function CartPage() {
   const theme = useTheme();
@@ -195,19 +196,26 @@ export default function CartPage() {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, flexWrap: 'wrap', gap: 1 }}>
                       {/* Quantity control */}
                       <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleUpdateQuantity(item.product._id, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                        >
-                          <RemoveIcon fontSize="small" />
-                        </IconButton>
-                        <Typography sx={{ px: 2.5, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
-                          {item.quantity}
-                        </Typography>
-                        <IconButton size="small" onClick={() => handleUpdateQuantity(item.product._id, item.quantity + 1)}>
-                          <AddIcon fontSize="small" />
-                        </IconButton>
+                        {(() => {
+                          const { step, minQuantity } = getQuantityRules(getProductPricingType(item.product));
+                          return (
+                            <>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleUpdateQuantity(item.product._id, item.quantity - step)}
+                                disabled={item.quantity <= minQuantity}
+                              >
+                                <RemoveIcon fontSize="small" />
+                              </IconButton>
+                              <Typography sx={{ px: 2.5, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
+                                {item.quantity}
+                              </Typography>
+                              <IconButton size="small" onClick={() => handleUpdateQuantity(item.product._id, item.quantity + step)}>
+                                <AddIcon fontSize="small" />
+                              </IconButton>
+                            </>
+                          );
+                        })()}
                       </Box>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
