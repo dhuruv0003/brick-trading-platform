@@ -8,6 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const path = require('path');
+const passport = require('./config/passport'); // registers the 'google-customer' strategy — must be required before the routes that use it
 
 const config = require('./config/env');
 const logger = require('./utils/logger');
@@ -73,6 +74,7 @@ app.use('/api', apiLimiter);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
+app.use(passport.initialize());
 
 // Data sanitization
 app.use(mongoSanitize()); // NoSQL injection
