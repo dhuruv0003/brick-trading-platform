@@ -4,6 +4,8 @@ import {
   Box, Typography, Button, Paper, TextField, InputAdornment, Grid2 as Grid, Card, CardMedia,
   CardContent, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem,
   Switch, FormControlLabel, Tooltip, Chip,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,6 +20,8 @@ const CATEGORY_OPTIONS = ['products', 'projects', 'factory', 'transport', 'team'
 const EMPTY_FORM = { title: '', url: '', publicId: '', category: 'other', caption: '', isActive: true };
 
 export default function AdminGalleryPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { enqueueSnackbar } = useSnackbar();
   const {
     items, isLoading, setSearch, createMutation, updateMutation, deleteMutation,
@@ -148,7 +152,7 @@ export default function AdminGalleryPage() {
         ))}
       </Grid>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle fontWeight={700}>{editingId ? 'Edit Image' : 'Add Image'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>

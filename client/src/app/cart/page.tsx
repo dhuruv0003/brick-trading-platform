@@ -19,7 +19,7 @@ import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import Image from 'next/image';
+import { getProductImageUrl, handleProductImageError } from '../../lib/productImage';
 import useCart from '../../hooks/useCart';
 import useCustomerAuth from '../../hooks/useCustomerAuth';
 import useWishlist from '../../hooks/useWishlist';
@@ -143,12 +143,13 @@ export default function CartPage() {
                       bgcolor: 'background.default',
                     }}
                   >
-                    {item.product.images?.[0]?.url ? (
-                      <Image
-                        src={item.product.images[0].url}
+                    {item.product.images?.length ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={getProductImageUrl(item.product)}
                         alt={item.product.name}
-                        fill
-                        style={{ objectFit: 'cover' }}
+                        onError={handleProductImageError}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
                     ) : (
                       <Box

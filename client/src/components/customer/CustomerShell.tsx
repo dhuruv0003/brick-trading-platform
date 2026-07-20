@@ -1,16 +1,14 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Box,
-  Drawer,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Typography,
-  IconButton,
   Divider,
   useTheme,
   useMediaQuery,
@@ -24,7 +22,6 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PersonIcon from '@mui/icons-material/Person';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import LogoutIcon from '@mui/icons-material/Logout';
-import MenuIcon from '@mui/icons-material/Menu';
 import useCustomerAuth from '../../hooks/useCustomerAuth';
 
 const NAV = [
@@ -39,9 +36,8 @@ const NAV = [
 export default function CustomerShell({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { logout, customer } = useCustomerAuth();
+  const { customer, logout } = useCustomerAuth();
 
   const isActive = (path: string) => {
     if (path === '/account/dashboard') return pathname === '/account/dashboard';
@@ -81,7 +77,6 @@ export default function CustomerShell({ children }: { children: React.ReactNode 
         {NAV.map((item) => (
           <Link key={item.path} href={item.path} style={{ textDecoration: 'none', color: 'inherit' }}>
             <ListItemButton
-              onClick={() => isMobile && setMobileOpen(false)}
               selected={isActive(item.path)}
               sx={{
                 borderRadius: 2,
@@ -104,13 +99,7 @@ export default function CustomerShell({ children }: { children: React.ReactNode 
       </List>
       <Divider />
       <Box sx={{ p: 2 }}>
-        <ListItemButton
-          onClick={() => {
-            if (isMobile) setMobileOpen(false);
-            logout();
-          }}
-          sx={{ borderRadius: 2, color: 'error.main' }}
-        >
+        <ListItemButton onClick={logout} sx={{ borderRadius: 2, color: 'error.main' }}>
           <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}>
             <LogoutIcon />
           </ListItemIcon>
@@ -121,34 +110,18 @@ export default function CustomerShell({ children }: { children: React.ReactNode 
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-      {/* Mobile Header Toggle */}
+    <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1.5, sm: 3 }, flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      {/* Mobile page title (no menu toggle here — the site header's single
+          hamburger already covers account navigation on small screens) */}
       {isMobile && (
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" fontWeight={700}>
-            {NAV.find(n => isActive(n.path))?.label || 'Account'}
-          </Typography>
-        </Box>
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 2, fontSize: '1.15rem' }}>
+          {NAV.find(n => isActive(n.path))?.label || 'Account'}
+        </Typography>
       )}
 
-      <Box sx={{ display: 'flex', flexGrow: 1, gap: 4, alignItems: 'flex-start' }}>
-        {/* Sidebar */}
-        {isMobile ? (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={() => setMobileOpen(false)}
-            ModalProps={{ keepMounted: true }}
-            sx={{
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 280 },
-            }}
-          >
-            {drawerContent}
-          </Drawer>
-        ) : (
+      <Box sx={{ display: 'flex', flexGrow: 1, gap: 4, alignItems: 'flex-start', minWidth: 0 }}>
+        {/* Sidebar — desktop only; mobile users navigate via the header menu */}
+        {!isMobile && (
           <Paper
             elevation={0}
             sx={{
@@ -166,7 +139,7 @@ export default function CustomerShell({ children }: { children: React.ReactNode 
         )}
 
         {/* Main Content Area */}
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, width: '100%' }}>
           {children}
         </Box>
       </Box>

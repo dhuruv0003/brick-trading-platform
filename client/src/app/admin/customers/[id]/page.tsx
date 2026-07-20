@@ -28,7 +28,11 @@ export default function AdminCustomerDetailsPage() {
     fetchCustomer();
   }, [customerId]);
 
-  if (loading) return <CircularProgress />;
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
+      <CircularProgress />
+    </Box>
+  );
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!customer) return <Typography>Customer not found</Typography>;
 

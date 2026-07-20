@@ -28,6 +28,8 @@ import {
   TablePagination,
   Tooltip,
   CircularProgress,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -46,7 +48,7 @@ const EMPTY_FORM = {
   description: '',
   shortDescription: '',
   specs: { size: '', weight: '', type: '', color: '', finish: '', strength: '' },
-  pricing: { retail: 0, wholesale: 0, bulk: 0, unit: 'per 1000', type: 'per_brick' },
+  pricing: { retail: 0, wholesale: 0, bulk: 0, unit: 'per brick', type: 'per_brick' },
   images: [] as { url: string; publicId?: string; alt: string; isPrimary: boolean }[],
   inStock: true,
   stockQuantity: 0,
@@ -55,6 +57,8 @@ const EMPTY_FORM = {
 };
 
 export default function AdminProductsPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { enqueueSnackbar } = useSnackbar();
   const {
     items: products,
@@ -285,7 +289,7 @@ export default function AdminProductsPage() {
       </Paper>
 
       {/* Create / Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle fontWeight={700}>{editingId ? 'Edit Product' : 'Add Product'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
@@ -356,8 +360,13 @@ export default function AdminProductsPage() {
               <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 1 }}>
                 Pricing (₹)
               </Typography>
+              <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+                {form.pricing.type === 'bundle_1000'
+                  ? 'Enter the price for the whole 1000-brick bundle (quantity below counts bundles).'
+                  : 'Enter the price for ONE BRICK — not a per-1000 or per-lot price (quantity below counts individual bricks).'}
+              </Typography>
             </Grid>
-            <Grid size={{ xs: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 label="Retail"
                 type="number"
@@ -367,7 +376,7 @@ export default function AdminProductsPage() {
                 onChange={(e) => setForm({ ...form, pricing: { ...form.pricing, retail: Number(e.target.value) } })}
               />
             </Grid>
-            <Grid size={{ xs: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 label="Wholesale"
                 type="number"
@@ -377,7 +386,7 @@ export default function AdminProductsPage() {
                 onChange={(e) => setForm({ ...form, pricing: { ...form.pricing, wholesale: Number(e.target.value) } })}
               />
             </Grid>
-            <Grid size={{ xs: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 label="Bulk"
                 type="number"

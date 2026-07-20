@@ -4,6 +4,8 @@ import {
   Box, Typography, Button, Paper, TextField, InputAdornment, Table, TableContainer, TableHead, TableBody, TableRow,
   TableCell, Chip, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions, Grid2 as Grid,
   MenuItem, Rating, TablePagination, Tooltip, Switch, FormControlLabel,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -21,6 +23,8 @@ const CUSTOMER_TYPES = [
 const EMPTY_FORM = { name: '', designation: '', company: '', customerType: 'other', rating: 5, review: '', isApproved: false, isFeatured: false };
 
 export default function AdminTestimonialsPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const {
     items, meta, isLoading, page, setPage, limit, setLimit, setSearch,
     createMutation, updateMutation, deleteMutation,
@@ -132,7 +136,7 @@ export default function AdminTestimonialsPage() {
         />
       </Paper>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle fontWeight={700}>{editingId ? 'Edit Testimonial' : 'Add Testimonial'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>

@@ -18,9 +18,7 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import useCustomerAuth from '../../hooks/useCustomerAuth';
-
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&q=80&w=400';
+import { getProductImageUrl, handleProductImageError } from '../../lib/productImage';
 
 interface ProductCardProps {
   product: any;
@@ -81,8 +79,9 @@ export default function ProductCard({
       <Box sx={{ position: 'relative', height: 220, overflow: 'hidden' }}>
         <CardMedia
           component="img"
-          image={product.images?.[0]?.url || FALLBACK_IMAGE}
+          image={getProductImageUrl(product)}
           alt={product.name}
+          onError={handleProductImageError}
           sx={{
             height: '100%',
             objectFit: 'cover',

@@ -81,7 +81,11 @@ export default function AdminOrderDetailsPage() {
     }
   };
 
-  if (loading) return <CircularProgress sx={{ mt: 4 }} />;
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
+      <CircularProgress sx={{ mt: 4 }}/>
+    </Box>
+  );
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!order) return <Typography>Order not found</Typography>;
 

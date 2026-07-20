@@ -28,7 +28,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { productsAPI, categoriesAPI } from '../services/api';
 import { useSnackbar } from 'notistack';
-import useCart from '../hooks/useCart';
+import useCart, { getProductQuantityRules } from '../hooks/useCart';
 import useWishlist from '../hooks/useWishlist';
 import ProductCard from '../components/products/ProductCard';
 
@@ -116,7 +116,8 @@ export default function Home() {
 
   const handleAddToCart = (product: any) => {
     if (!product.inStock) return;
-    addToCart(product, 1);
+    const { minQuantity } = getProductQuantityRules(product);
+    addToCart(product, minQuantity);
     enqueueSnackbar(`${product.name} added to cart!`, {
       variant: 'success',
       action: (
@@ -587,12 +588,13 @@ export default function Home() {
               size="large"
               sx={{
                 bgcolor: '#fff',
+                backgroundImage: 'none',
                 color: theme.palette.primary.main,
                 fontWeight: 700,
                 px: 4,
                 py: 1.5,
                 borderRadius: 2,
-                '&:hover': { bgcolor: alpha('#fff', 0.9) },
+                '&:hover': { bgcolor: alpha('#fff', 0.9), backgroundImage: 'none' },
               }}
             >
               Browse Products

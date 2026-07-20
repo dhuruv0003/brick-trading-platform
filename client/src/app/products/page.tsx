@@ -13,9 +13,10 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import Link from 'next/link';
 import { productsAPI, categoriesAPI } from '../../services/api';
 import { useSnackbar } from 'notistack';
-import useCart from '../../hooks/useCart';
+import useCart, { getProductQuantityRules } from '../../hooks/useCart';
 import useWishlist from '../../hooks/useWishlist';
 import ProductCard from '../../components/products/ProductCard';
+import { getProductImageUrl, handleProductImageError } from '../../lib/productImage';
 
 const DEFAULT_LIMIT = 12;
 const PRICE_RANGE_MAX = 5000;
@@ -55,11 +56,12 @@ function SearchSuggestions({ suggestions, onSelect }: { suggestions: any[]; onSe
             '&:hover': { bgcolor: 'action.hover' },
           }}
         >
-          {p.images?.[0]?.url && (
+          {p.images?.length > 0 && (
             <Box
               component="img"
-              src={p.images[0].url}
+              src={getProductImageUrl(p)}
               alt={p.name}
+              onError={handleProductImageError}
               sx={{ width: 36, height: 36, borderRadius: 1, objectFit: 'cover', flexShrink: 0 }}
             />
           )}
@@ -263,7 +265,8 @@ function ProductsContent() {
 
   const handleAddToCart = (product: any) => {
     if (!product.inStock) return;
-    addToCart(product, 1);
+    const { minQuantity } = getProductQuantityRules(product);
+    addToCart(product, minQuantity);
     enqueueSnackbar(`${product.name} added to cart!`, {
       variant: 'success',
       action: <Button size="small" color="inherit" component={Link} href="/cart">View Cart</Button>,
@@ -316,7 +319,7 @@ function ProductsContent() {
               )}
             </Box>
           </Grid>
-          <Grid item xs={6} md={2}>
+          <Grid item xs={12} sm={6} md={2}>
             <FormControl fullWidth>
               <InputLabel>Sort By</InputLabel>
               <Select value={sortBy} label="Sort By" onChange={(e) => handleSortChange(e.target.value)}>
@@ -329,16 +332,18 @@ function ProductsContent() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={6} md={3} sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-end', md: 'flex-end' } }}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', gap: 1 }}>
             <Button
               variant="outlined"
+              size="small"
               startIcon={<FilterListIcon />}
               onClick={() => setShowFilters((v) => !v)}
               endIcon={activeFilterCount > 0 ? <Chip label={activeFilterCount} size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} /> : undefined}
+              sx={{ flex: 1, whiteSpace: 'nowrap' }}
             >
               Filters
             </Button>
-            <Button component={Link} href="/cart" variant="outlined" startIcon={<ShoppingCartIcon />}>
+            <Button component={Link} href="/cart" variant="outlined" size="small" startIcon={<ShoppingCartIcon />} sx={{ flex: 1, whiteSpace: 'nowrap' }}>
               {cartCount > 0 ? `Cart (${cartCount})` : 'Cart'}
             </Button>
           </Grid>

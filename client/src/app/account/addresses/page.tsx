@@ -111,7 +111,11 @@ export default function AddressesPage() {
     }
   };
 
-  if (loading) return <CircularProgress sx={{ mt: 4 }} />;
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
+      <CircularProgress sx={{ mt: 4 }}/>
+    </Box>
+  );
 
   return (
     <Box>

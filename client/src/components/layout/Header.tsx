@@ -156,8 +156,10 @@ export default function Header() {
           { label: 'Contact', path: '/contact', icon: <ContactMailIcon /> },
           { label: 'Cart', path: '/cart', icon: <ShoppingCartIcon />, badge: cartCount },
           ...(isAuthenticated ? [
+            { label: 'Dashboard', path: '/account/dashboard', icon: <AccountCircleIcon /> },
             { label: 'Wishlist', path: '/account/wishlist', icon: <FavoriteIcon /> },
             { label: 'Orders', path: '/account/orders', icon: <ShoppingBagIcon /> },
+            { label: 'Addresses', path: '/account/addresses', icon: <ContactMailIcon /> },
             { label: 'Profile', path: '/account/profile', icon: <PersonIcon /> },
           ] : []),
         ].map((item) => (
@@ -421,7 +423,14 @@ export default function Header() {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', lg: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: '82vw', maxWidth: 340 },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: '82vw',
+            maxWidth: 340,
+            borderRadius: 0,
+            borderTopLeftRadius: 16,
+            borderBottomLeftRadius: 16,
+          },
         }}
       >
         {mobileDrawer}

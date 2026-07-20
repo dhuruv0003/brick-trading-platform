@@ -39,6 +39,7 @@ import useWishlist from '../../../hooks/useWishlist';
 import ProductCard from '../../../components/products/ProductCard';
 import ReviewsSection from '../../../components/products/ReviewsSection';
 import { getQuantityRules, getProductPricingType, describeRule } from '../../../lib/quantityRules';
+import { handleProductImageError } from '../../../lib/productImage';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&q=80&w=800';
@@ -231,6 +232,7 @@ export default function ProductDetailPage() {
             <img
               src={product.images?.[selectedImageIndex]?.url || product.images?.[0]?.url || FALLBACK_IMAGE}
               alt={product.name}
+              onError={handleProductImageError}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
             {isOutOfStock && (
@@ -262,7 +264,7 @@ export default function ProductDetailPage() {
                     '&:hover': { opacity: 1 },
                   }}
                 >
-                  <img src={img.url} alt={`${product.name} ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={img.url} alt={`${product.name} ${i + 1}`} onError={handleProductImageError} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </Box>
               ))}
             </Box>

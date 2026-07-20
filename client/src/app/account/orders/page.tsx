@@ -35,7 +35,11 @@ export default function OrdersPage() {
     }
   };
 
-  if (loading) return <CircularProgress />;
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
+      <CircularProgress />
+    </Box>
+  );
 
   return (
     <Box>

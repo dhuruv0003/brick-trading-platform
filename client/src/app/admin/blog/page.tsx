@@ -4,6 +4,8 @@ import {
   Box, Typography, Button, Paper, TextField, InputAdornment, Table, TableContainer, TableHead, TableBody, TableRow,
   TableCell, Chip, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions, Grid2 as Grid,
   Switch, FormControlLabel, TablePagination, Tooltip,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,6 +18,8 @@ import ConfirmDialog from '../../../components/admin/ConfirmDialog';
 const EMPTY_FORM = { title: '', excerpt: '', content: '', category: 'General', isPublished: false };
 
 export default function AdminBlogPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const {
     items: posts, meta, isLoading, page, setPage, limit, setLimit, setSearch,
     createMutation, updateMutation, deleteMutation,
@@ -123,7 +127,7 @@ export default function AdminBlogPage() {
         />
       </Paper>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle fontWeight={700}>{editingId ? 'Edit Post' : 'New Blog Post'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>

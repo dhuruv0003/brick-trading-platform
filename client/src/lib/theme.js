@@ -93,11 +93,21 @@ let theme = createTheme({
             transform: 'translateY(-1px)',
             boxShadow: `0 8px 24px ${alpha(BRAND.orange, 0.35)}`,
           },
+          '&.Mui-disabled': {
+            background: alpha('#000', 0.12),
+            backgroundImage: 'none',
+            color: alpha('#000', 0.38),
+          },
           transition: 'all 0.2s ease',
         },
         outlinedPrimary: {
           borderWidth: 2,
           '&:hover': { borderWidth: 2, backgroundColor: alpha(BRAND.orange, 0.05) },
+          '&.Mui-disabled': {
+            borderWidth: 2,
+            borderColor: alpha('#000', 0.26),
+            color: alpha('#000', 0.38),
+          },
         },
         sizeLarge: { padding: '14px 32px', fontSize: '1rem' },
       },

@@ -36,10 +36,17 @@ const productSchema = new mongoose.Schema(
       customFields: [{ key: String, value: String }],
     },
     pricing: {
-      retail: { type: Number, default: 0 },       // per 1000 bricks
+      // IMPORTANT: retail/wholesale/bulk are price PER BRICK when
+      // pricing.type is 'per_brick' (they get multiplied directly by the
+      // order quantity, which is counted in bricks) — do NOT enter a
+      // "per 1000 bricks" total here for per_brick products, or orders
+      // will be overcharged ~1000x. When pricing.type is 'bundle_1000',
+      // these fields ARE the price per whole 1000-brick bundle, since
+      // quantity there counts bundles, not bricks.
+      retail: { type: Number, default: 0 },
       wholesale: { type: Number, default: 0 },
       bulk: { type: Number, default: 0 },
-      unit: { type: String, default: 'per 1000' }, // free-text display label only, e.g. "per 1000 bricks"
+      unit: { type: String, default: 'per brick' }, // free-text display label only, e.g. "per brick", "per 1000 bricks bundle"
       // Structured pricing type that drives quantity-increment rules
       // (see server/src/utils/quantityRules.js). Unlike `unit` above,
       // this is a controlled value, not display text.

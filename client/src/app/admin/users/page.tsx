@@ -4,6 +4,8 @@ import {
   Box, Typography, Button, Paper, TextField, InputAdornment, Table, TableContainer, TableHead, TableBody, TableRow,
   TableCell, Chip, IconButton, Skeleton, Dialog, DialogTitle, DialogContent, DialogActions, Grid2 as Grid,
   MenuItem, Switch, FormControlLabel, TablePagination, Tooltip, Avatar,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,6 +20,8 @@ const ROLES = ['super_admin', 'admin', 'manager', 'staff'];
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'staff', isActive: true };
 
 export default function AdminUsersPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user: currentUser } = useAuth();
   const {
     items: users, meta, isLoading, page, setPage, limit, setLimit, setSearch,
@@ -137,7 +141,7 @@ export default function AdminUsersPage() {
         />
       </Paper>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle fontWeight={700}>{editingId ? 'Edit User' : 'Add User'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>

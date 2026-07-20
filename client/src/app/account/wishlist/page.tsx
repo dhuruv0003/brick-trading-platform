@@ -4,7 +4,7 @@ import { Box, Typography, Grid, CircularProgress, Paper, Button } from '@mui/mat
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import Link from 'next/link';
 import useWishlist from '../../../hooks/useWishlist';
-import useCart from '../../../hooks/useCart';
+import useCart, { getProductQuantityRules } from '../../../hooks/useCart';
 import ProductCard from '../../../components/products/ProductCard';
 import { useSnackbar } from 'notistack';
 
@@ -15,7 +15,8 @@ export default function WishlistPage() {
 
   const handleAddToCart = (product: any) => {
     if (!product.inStock) return;
-    addToCart(product, 1);
+    const { minQuantity } = getProductQuantityRules(product);
+    addToCart(product, minQuantity);
     enqueueSnackbar(`${product.name} added to cart!`, {
       variant: 'success',
       action: (
@@ -26,7 +27,11 @@ export default function WishlistPage() {
     });
   };
 
-  if (loading) return <CircularProgress sx={{ mt: 4 }} />;
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
+      <CircularProgress sx={{ mt: 4 }}/>
+    </Box>
+  );
 
   return (
     <Box>

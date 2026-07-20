@@ -25,6 +25,8 @@ import {
   FormControlLabel,
   TablePagination,
   Tooltip,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -37,6 +39,8 @@ import ConfirmDialog from '../../../components/admin/ConfirmDialog';
 const EMPTY_FORM = { name: '', description: '', parent: '', isActive: true };
 
 export default function AdminCategoriesPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const {
     items: categories,
     meta,
@@ -169,7 +173,7 @@ export default function AdminCategoriesPage() {
         />
       </Paper>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle fontWeight={700}>{editingId ? 'Edit Category' : 'Add Category'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>

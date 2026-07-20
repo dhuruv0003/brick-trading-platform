@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Divider, Button, Chip, CircularProgress,
   Alert, Stepper, Step, StepLabel, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField,
+  DialogActions, TextField, useTheme, useMediaQuery,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -36,6 +36,8 @@ export default function OrderDetailsPage() {
   const orderId = params?.id as string;
   const { add: addToCart } = useCart();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,11 @@ export default function OrderDetailsPage() {
     router.push('/cart');
   };
 
-  if (loading) return <CircularProgress sx={{ mt: 4 }} />;
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
+      <CircularProgress sx={{ mt: 4 }}/>
+    </Box>
+  );
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!order) return <Typography>Order not found.</Typography>;
 
@@ -112,15 +118,15 @@ export default function OrderDetailsPage() {
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={800} fontFamily='"Playfair Display", serif'>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h5" fontWeight={800} fontFamily='"Playfair Display", serif' sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' }, wordBreak: 'break-word' }}>
             Order #{order.orderNumber}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Placed on {dayjs(order.createdAt).format('DD MMM YYYY, hh:mm A')}
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Chip
             label={order.status.replace(/_/g, ' ').toUpperCase()}
             color={STATUS_COLORS[order.status] ?? 'default'}
@@ -146,9 +152,11 @@ export default function OrderDetailsPage() {
 
       {/* ── Tracking Stepper (hide if cancelled/refunded) ─────────────────── */}
       {!isCancelled && order.status !== 'refunded' && (
-        <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+        <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
           <Typography variant="subtitle1" fontWeight={700} mb={2}>Order Tracking</Typography>
-          <Stepper activeStep={activeStep >= 0 ? activeStep : 0} alternativeLabel>
+          {/* Vertical orientation on mobile — 6 steps side-by-side don't fit a
+              phone width and were forcing the whole page to scroll sideways. */}
+          <Stepper activeStep={activeStep >= 0 ? activeStep : 0} alternativeLabel={!isMobile} orientation={isMobile ? 'vertical' : 'horizontal'}>
             {STEP_LABELS.map((label) => (
               <Step key={label}>
                 <StepLabel>{label}</StepLabel>
@@ -156,7 +164,7 @@ export default function OrderDetailsPage() {
             ))}
           </Stepper>
           {order.trackingNumber && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: isMobile ? 'left' : 'center' }}>
               Tracking Number: <strong>{order.trackingNumber}</strong>
             </Typography>
           )}
@@ -173,21 +181,21 @@ export default function OrderDetailsPage() {
       <Grid container spacing={3}>
         {/* ── Items ─────────────────────────────────────────────────────── */}
         <Grid item xs={12} md={8}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: 3 }}>
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: 3 }}>
             <Typography variant="h6" fontWeight={700} mb={2}>Items</Typography>
             {order.items.map((item: any) => {
               const name = item.productSnapshot?.name || item.product?.name || '—';
               const unitPrice = item.unitPrice ?? 0;
               const lineTotal = item.totalPrice ?? unitPrice * item.quantity;
               return (
-                <Box key={item._id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={600}>{name}</Typography>
+                <Box key={item._id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, gap: 1, flexWrap: 'wrap' }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>{name}</Typography>
                     <Typography variant="body2" color="text.secondary">
                       Qty: {item.quantity} × ₹{unitPrice.toLocaleString()}
                     </Typography>
                   </Box>
-                  <Typography variant="subtitle1" fontWeight={600}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ flexShrink: 0 }}>
                     ₹{lineTotal.toLocaleString()}
                   </Typography>
                 </Box>
@@ -219,7 +227,7 @@ export default function OrderDetailsPage() {
 
         {/* ── Details sidebar ───────────────────────────────────────────── */}
         <Grid item xs={12} md={4}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: 3 }}>
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: 3 }}>
             <Typography variant="h6" fontWeight={700} mb={2}>Order Info</Typography>
 
             <Typography variant="body2" color="text.secondary">Payment Method</Typography>
@@ -248,7 +256,7 @@ export default function OrderDetailsPage() {
           </Paper>
 
           {addr && (
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+            <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
               <Typography variant="h6" fontWeight={700} mb={1.5}>Shipping Address</Typography>
               <Typography variant="body1" fontWeight={600}>{addr.fullName}</Typography>
               <Typography variant="body2" color="text.secondary">{addr.addressLine1}</Typography>

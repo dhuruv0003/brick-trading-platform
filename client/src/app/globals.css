@@ -7,6 +7,8 @@ body {
   scroll-behavior: smooth;
   background-color: #fdf8f3;
   color: #1c1917;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 * {
