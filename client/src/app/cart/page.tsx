@@ -126,7 +126,7 @@ export default function CartPage() {
 
       <Grid container spacing={4}>
         {/* ── Items list ── */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
           <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
             {itemsList.map((item, index) => (
               <React.Fragment key={item.product._id}>
@@ -243,7 +243,7 @@ export default function CartPage() {
             ))}
           </Paper>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto', pt: 2 }}>
             <Button component={Link} href="/products" variant="text">
               ← Continue Shopping
             </Button>

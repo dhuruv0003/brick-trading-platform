@@ -214,13 +214,10 @@ export default function Header() {
       <AppBar
         position="sticky"
         sx={{
-          backgroundColor: scrolled
-            ? alpha(theme.palette.background.paper, 0.95)
-            : 'transparent',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          backgroundColor: theme.palette.background.paper,
           boxShadow: scrolled ? theme.shadows[2] : 'none',
-          borderBottom: scrolled ? `1px solid ${theme.palette.divider}` : 'none',
-          transition: 'all 0.3s ease',
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          transition: 'box-shadow 0.2s ease',
           top: 0,
           zIndex: theme.zIndex.appBar,
         }}

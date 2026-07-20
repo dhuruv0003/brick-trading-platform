@@ -33,7 +33,10 @@ body {
   background: #a8a29e;
 }
 
-/* Typography styles to hook custom CSS variable fonts to MUI */
+/* Signal that toasts are tappable-to-dismiss (see Providers.tsx) */
+[class*="notistack-MuiContent"] {
+  cursor: pointer;
+}
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-playfair), Georgia, serif;
 }
