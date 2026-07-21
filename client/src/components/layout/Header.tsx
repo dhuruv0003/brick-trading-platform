@@ -225,6 +225,19 @@ export default function Header() {
         <Container maxWidth="xl">
           <Toolbar disableGutters sx={{ justifyContent: 'space-between', height: { xs: 64, md: 80 }, gap: 1 }}>
             {/* Logo */}
+            {/* Mobile Menu Toggle — left side, standard convention */}
+            {isMobile && (
+              <IconButton
+                color="inherit"
+                aria-label="Open menu"
+                edge="start"
+                onClick={handleDrawerToggle}
+                sx={{ color: theme.palette.text.primary, flexShrink: 0, mr: 0.5 }}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
+
             <Link href="/" style={{ textDecoration: 'none', minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                 <Box
@@ -316,7 +329,7 @@ export default function Header() {
                   >
                     <FavoriteIcon />
                   </IconButton>
-                  <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, color: theme.palette.text.primary }}>
+                  <Box sx={{ color: theme.palette.text.primary }}>
                     <NotificationBell />
                   </Box>
                   <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }}>
@@ -395,18 +408,6 @@ export default function Header() {
                 </Button>
               )}
 
-              {/* Mobile Menu Toggle */}
-              {isMobile && (
-                <IconButton
-                  color="inherit"
-                  aria-label="Open menu"
-                  edge="start"
-                  onClick={handleDrawerToggle}
-                  sx={{ color: theme.palette.text.primary, flexShrink: 0 }}
-                >
-                  <MenuIcon />
-                </IconButton>
-              )}
             </Box>
           </Toolbar>
         </Container>
@@ -424,9 +425,6 @@ export default function Header() {
             boxSizing: 'border-box',
             width: '82vw',
             maxWidth: 340,
-            borderRadius: 0,
-            borderTopLeftRadius: 16,
-            borderBottomLeftRadius: 16,
           },
         }}
       >

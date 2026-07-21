@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Box,
@@ -13,9 +13,12 @@ import {
 import FacebookIcon from '@mui/icons-material/Facebook';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import TwitterIcon from '@mui/icons-material/Twitter';
+import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import { settingsAPI } from '../../services/api';
+import useCustomerAuth from '../../hooks/useCustomerAuth';
 
 const footerLink = {
   color: '#a8a29e',
@@ -27,8 +30,37 @@ const footerLink = {
   transition: 'color 0.2s',
 };
 
+// Shown until the admin sets these in Admin → Settings (Contact/Social/General
+// tabs) — same defaults as before this became configurable.
+const DEFAULTS = {
+  company_tagline: 'Your trusted e-commerce destination for premium bricks and construction materials. Sourced directly from kilns, delivered to your site.',
+  phone_primary: '+91-9876543210',
+  email_primary: 'support@brickpro.com',
+  company_address: '123 Brick Market, Industrial Area, City – 400001',
+};
+
 export default function Footer() {
   const theme = useTheme();
+  const { isAuthenticated } = useCustomerAuth();
+  const [settings, setSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    settingsAPI
+      .getPublic()
+      .then((res) => setSettings(res.data.data.settings || {}))
+      .catch(() => {
+        // fail silently — footer just shows the defaults below
+      });
+  }, []);
+
+  const get = (key: keyof typeof DEFAULTS) => settings[key] || DEFAULTS[key];
+
+  const socialLinks = [
+    { icon: <FacebookIcon />, href: settings.facebook_url },
+    { icon: <InstagramIcon />, href: settings.instagram_url },
+    { icon: <TwitterIcon />, href: settings.twitter_url },
+    { icon: <LinkedInIcon />, href: settings.linkedin_url },
+  ].filter((s) => s.href);
 
   return (
     <Box
@@ -59,31 +91,31 @@ export default function Footer() {
               Brick<span style={{ color: theme.palette.primary.main }}>Pro</span>
             </Typography>
             <Typography variant="body2" sx={{ color: '#a8a29e', mb: 3, maxWidth: 320, lineHeight: 1.8 }}>
-              Your trusted e-commerce destination for premium bricks and construction materials. Sourced directly from kilns, delivered to your site.
+              {get('company_tagline')}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {[
-                { icon: <FacebookIcon />, href: 'https://facebook.com' },
-                { icon: <InstagramIcon />, href: 'https://instagram.com' },
-                { icon: <TwitterIcon />, href: 'https://twitter.com' },
-              ].map(({ icon, href }, i) => (
-                <IconButton
-                  key={i}
-                  component="a"
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    color: '#fff',
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    '&:hover': { backgroundColor: theme.palette.primary.main },
-                    transition: 'background-color 0.2s',
-                  }}
-                >
-                  {icon}
-                </IconButton>
-              ))}
-            </Box>
+            {/* Only show icons for platforms the admin has actually linked —
+                previously these always linked to generic facebook.com etc. */}
+            {socialLinks.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {socialLinks.map(({ icon, href }, i) => (
+                  <IconButton
+                    key={i}
+                    component="a"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      color: '#fff',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      '&:hover': { backgroundColor: theme.palette.primary.main },
+                      transition: 'background-color 0.2s',
+                    }}
+                  >
+                    {icon}
+                  </IconButton>
+                ))}
+              </Box>
+            )}
           </Grid>
 
           {/* Shop */}
@@ -125,19 +157,26 @@ export default function Footer() {
             </Box>
           </Grid>
 
-          {/* Account */}
+          {/* Account — links to a personal account only make sense once
+              someone's actually logged in; previously these always showed,
+              even to a first-time visitor with no account yet. */}
           <Grid item xs={6} sm={3} md={2}>
             <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 700, mb: 3 }}>
-              My Account
+              {isAuthenticated ? 'My Account' : 'Get Started'}
             </Typography>
             <Box component="nav">
-              {[
-                { label: 'My Orders', path: '/account/orders' },
-                { label: 'Wishlist', path: '/account/wishlist' },
-                { label: 'Addresses', path: '/account/addresses' },
-                { label: 'Profile', path: '/account/profile' },
-                { label: 'Login / Register', path: '/auth/login' },
-              ].map(({ label, path }) => (
+              {(isAuthenticated
+                ? [
+                    { label: 'My Orders', path: '/account/orders' },
+                    { label: 'Wishlist', path: '/account/wishlist' },
+                    { label: 'Addresses', path: '/account/addresses' },
+                    { label: 'Profile', path: '/account/profile' },
+                  ]
+                : [
+                    { label: 'Login', path: '/auth/login' },
+                    { label: 'Create Account', path: '/auth/register' },
+                  ]
+              ).map(({ label, path }) => (
                 <Typography key={label} component={Link} href={path} sx={footerLink}>
                   {label}
                 </Typography>
@@ -155,14 +194,14 @@ export default function Footer() {
                 <PhoneIcon sx={{ color: theme.palette.primary.main, mt: 0.3, flexShrink: 0 }} />
                 <Box>
                   <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>Call Us</Typography>
-                  <Typography variant="body2" sx={{ color: '#a8a29e' }}>+91-9876543210</Typography>
+                  <Typography variant="body2" sx={{ color: '#a8a29e' }}>{get('phone_primary')}</Typography>
                 </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
                 <EmailIcon sx={{ color: theme.palette.primary.main, mt: 0.3, flexShrink: 0 }} />
                 <Box>
                   <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>Email Us</Typography>
-                  <Typography variant="body2" sx={{ color: '#a8a29e' }}>support@brickpro.com</Typography>
+                  <Typography variant="body2" sx={{ color: '#a8a29e' }}>{get('email_primary')}</Typography>
                 </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
@@ -170,7 +209,7 @@ export default function Footer() {
                 <Box>
                   <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>Head Office</Typography>
                   <Typography variant="body2" sx={{ color: '#a8a29e' }}>
-                    123 Brick Market, Industrial Area, City – 400001
+                    {get('company_address')}
                   </Typography>
                 </Box>
               </Box>

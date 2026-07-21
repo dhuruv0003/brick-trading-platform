@@ -1,7 +1,8 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box, Paper, TextField, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material';
+import { PageLoader } from '../../../components/common/Loaders';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import LockIcon from '@mui/icons-material/Lock';
@@ -9,11 +10,21 @@ import useAuth from '../../../hooks/useAuth';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated, hydrated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // An admin who's already logged in shouldn't be able to just sit on the
+  // login form (or land back on it via browser back/forward) — send them
+  // straight to the dashboard instead. `hydrated` guards against a flash
+  // of the login form before the persisted session has loaded.
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      router.replace('/admin');
+    }
+  }, [hydrated, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +36,10 @@ export default function AdminLoginPage() {
       setFormError(result.message);
     }
   };
+
+  if (!hydrated || isAuthenticated) {
+    return <PageLoader minHeight="100vh" />;
+  }
 
   return (
     <Box

@@ -16,7 +16,6 @@ import {
   TableRow,
   Paper,
   Divider,
-  CircularProgress,
   useTheme,
   Alert,
   Chip,
@@ -25,7 +24,6 @@ import {
   Tooltip,
   IconButton,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import ShareIcon from '@mui/icons-material/Share';
@@ -39,6 +37,7 @@ import useWishlist from '../../../hooks/useWishlist';
 import ProductCard from '../../../components/products/ProductCard';
 import ReviewsSection from '../../../components/products/ReviewsSection';
 import { getQuantityRules, getProductPricingType, describeRule } from '../../../lib/quantityRules';
+import { ErrorState } from '../../../components/common/ErrorState';
 import { handleProductImageError } from '../../../lib/productImage';
 
 const FALLBACK_IMAGE =
@@ -146,14 +145,7 @@ export default function ProductDetailPage() {
   }
 
   if (error || !data) {
-    return (
-      <Container maxWidth="md" sx={{ py: 10, textAlign: 'center' }}>
-        <Alert severity="error" sx={{ mb: 4 }}>{error || 'Failed to load product.'}</Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/products')} variant="contained">
-          Back to Products
-        </Button>
-      </Container>
-    );
+    return <ErrorState message={error || 'Failed to load product.'} backHref="/products" backLabel="Back to Products" />;
   }
 
   const { product, related } = data;

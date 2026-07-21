@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
-import { Box, Typography, Grid, CircularProgress, Paper, Button } from '@mui/material';
+import { Box, Typography, Grid, Paper, Button } from '@mui/material';
+import { PageLoader } from '../../../components/common/Loaders';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import Link from 'next/link';
 import useWishlist from '../../../hooks/useWishlist';
@@ -28,9 +29,7 @@ export default function WishlistPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
-      <CircularProgress sx={{ mt: 4 }}/>
-    </Box>
+    <PageLoader />
   );
 
   return (

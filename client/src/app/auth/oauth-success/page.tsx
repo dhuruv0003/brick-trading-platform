@@ -2,9 +2,9 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { Box, CircularProgress, Typography } from '@mui/material';
 import { customerAuthAPI } from '../../../services/api';
 import { customerLoginSuccess } from '../../../store/customerSlice';
+import { PageLoader } from '../../../components/common/Loaders';
 
 function OAuthSuccessHandler() {
   const router = useRouter();
@@ -41,25 +41,12 @@ function OAuthSuccessHandler() {
     processOAuth();
   }, [searchParams, router, dispatch]);
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
-      <CircularProgress sx={{ mb: 3 }} />
-      <Typography variant="h6" fontWeight={600} color="text.secondary">
-        Completing sign in...
-      </Typography>
-    </Box>
-  );
+  return <PageLoader minHeight="50vh" label="Completing sign in..." />;
 }
 
 export default function OAuthSuccessPage() {
   return (
-    <Suspense
-      fallback={
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-          <CircularProgress />
-        </Box>
-      }
-    >
+    <Suspense fallback={<PageLoader minHeight="50vh" />}>
       <OAuthSuccessHandler />
     </Suspense>
   );

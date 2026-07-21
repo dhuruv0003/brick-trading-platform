@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Box, CircularProgress } from '@mui/material';
+import { PageLoader } from '../../components/common/Loaders';
 import useAuth from '../../hooks/useAuth';
 import AdminShell from '../../components/admin/AdminShell';
 
@@ -20,11 +20,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (isLoginPage) return <>{children}</>;
 
   if (checking) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader minHeight="100vh" />;
   }
 
   if (!isAuthenticated) return null; // redirecting

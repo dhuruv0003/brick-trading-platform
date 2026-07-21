@@ -1,32 +1,38 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, IconButton, CircularProgress } from '@mui/material';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, IconButton, Alert, Button } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import Link from 'next/link';
+import { SectionLoader } from '../../../components/common/Loaders';
 import { adminCustomersAPI } from '../../../services/api';
 import dayjs from 'dayjs';
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
 
+  const fetchCustomers = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await adminCustomersAPI.getAll({ page: page + 1, limit: rowsPerPage });
+      setCustomers(res.data.data);
+      setTotal(res.data.meta.total);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load customers. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      try {
-        const res = await adminCustomersAPI.getAll({ page: page + 1, limit: rowsPerPage });
-        setCustomers(res.data.data);
-        setTotal(res.data.meta.total);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage]);
 
   const handleChangePage = (event: unknown, newPage: number) => setPage(newPage);
@@ -41,8 +47,12 @@ export default function AdminCustomersPage() {
       
       <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
         {loading ? (
-          <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
-            <CircularProgress />
+          <SectionLoader />
+        ) : error ? (
+          <Box sx={{ p: 4 }}>
+            <Alert severity="error" action={<Button color="inherit" size="small" onClick={fetchCustomers}>Retry</Button>}>
+              {error}
+            </Alert>
           </Box>
         ) : (
           <>

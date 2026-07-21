@@ -1,10 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Paper, Grid, Divider, Button, Chip, CircularProgress,
+  Box, Typography, Paper, Grid, Divider, Button, Chip,
   Alert, Stepper, Step, StepLabel, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, useTheme, useMediaQuery,
 } from '@mui/material';
+import { PageLoader } from '../../../../components/common/Loaders';
+import { ErrorState } from '../../../../components/common/ErrorState';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -94,12 +96,10 @@ export default function OrderDetailsPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
-      <CircularProgress sx={{ mt: 4 }}/>
-    </Box>
+    <PageLoader />
   );
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!order) return <Typography>Order not found.</Typography>;
+  if (error) return <ErrorState title="Something went wrong" message={error} backHref="/account/orders" backLabel="Back to Orders" />;
+  if (!order) return <ErrorState title="Order not found" backHref="/account/orders" backLabel="Back to Orders" />;
 
   const isCancellable = ['pending', 'confirmed'].includes(order.status);
   const isCancelled = order.status === 'cancelled';

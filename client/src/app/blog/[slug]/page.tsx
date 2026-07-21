@@ -9,10 +9,11 @@ import {
   Grid,
   Divider,
   Paper,
-  CircularProgress,
   useTheme,
   CardMedia,
 } from '@mui/material';
+import { PageLoader } from '../../../components/common/Loaders';
+import { ErrorState } from '../../../components/common/ErrorState';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -44,22 +45,11 @@ export default function BlogDetailPage() {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 15 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   if (!post) {
-    return (
-      <Container maxWidth="md" sx={{ py: 10, textAlign: 'center' }}>
-        <Typography variant="h5" sx={{ mb: 4 }}>Article not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/blog')} variant="contained">
-          Back to Blog
-        </Button>
-      </Container>
-    );
+    return <ErrorState title="Article not found" backHref="/blog" backLabel="Back to Blog" />;
   }
 
   return (
@@ -146,14 +136,14 @@ export default function BlogDetailPage() {
               Need Professional Advice?
             </Typography>
             <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 3, lineHeight: 1.6 }}>
-              Get custom load calculations, bulk price quotes, or project delivery logistics schedules.
+              Browse our full catalog for pricing, specs, and delivery details on every brick type.
             </Typography>
             <Button
               variant="contained"
               fullWidth
-              onClick={() => router.push('/quote')}
+              onClick={() => router.push('/products')}
             >
-              Request Quote Proposal
+              Browse Products
             </Button>
           </Paper>
         </Grid>

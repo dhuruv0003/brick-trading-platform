@@ -10,7 +10,6 @@ import {
   TextField,
   Tabs,
   Tab,
-  CircularProgress,
   Button,
   useTheme,
   InputAdornment,
@@ -20,11 +19,14 @@ import SearchIcon from '@mui/icons-material/Search';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { faqsAPI } from '../../services/api';
 import Link from 'next/link';
+import { SectionLoader } from '../../components/common/Loaders';
+import { ErrorState } from '../../components/common/ErrorState';
 
 export default function FAQPage() {
   const theme = useTheme();
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
@@ -34,6 +36,7 @@ export default function FAQPage() {
 
   const fetchFAQs = async () => {
     setLoading(true);
+    setError('');
     try {
       const params: any = {};
       if (category !== 'all') params.category = category;
@@ -45,6 +48,7 @@ export default function FAQPage() {
       setFaqs(faqList);
     } catch (err) {
       console.error('Error fetching FAQs:', err);
+      setError('Failed to load FAQs. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,7 +102,9 @@ export default function FAQPage() {
           onChange={(e, val) => setCategory(val)}
           textColor="primary"
           indicatorColor="primary"
-          centered
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
         >
           <Tab value="all" label="All FAQs" />
           <Tab value="General" label="General" />
@@ -110,9 +116,9 @@ export default function FAQPage() {
 
       {/* FAQs List */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <SectionLoader minHeight={320} />
+      ) : error ? (
+        <ErrorState message={error} minHeight={320} />
       ) : !Array.isArray(faqs) || faqs.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 6 }}>
           <Typography variant="subtitle1" sx={{ color: theme.palette.text.secondary, mb: 3 }}>

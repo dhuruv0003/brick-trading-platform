@@ -78,7 +78,7 @@ export default function ServicesPage() {
           Talk directly with our transport managers to check narrow lane accessibility, dump truck restrictions, and batch dispatch timelines.
         </Typography>
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-          <Button component={Link} href="/quote" variant="contained">Request Custom Quote</Button>
+          <Button component={Link} href="/products" variant="contained">Browse Products</Button>
           <Button component={Link} href="/contact" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>Contact Logistics</Button>
         </Box>
       </Paper>

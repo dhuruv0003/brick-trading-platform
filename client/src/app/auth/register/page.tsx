@@ -13,7 +13,6 @@ import {
   IconButton,
   Divider,
   Grid,
-  CircularProgress,
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -21,6 +20,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import GoogleIcon from '@mui/icons-material/Google';
 import useCustomerAuth from '../../../hooks/useCustomerAuth';
 import GuestOnlyGuard from '../../../components/guards/GuestOnlyGuard';
+import { PageLoader } from '../../../components/common/Loaders';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -244,11 +244,7 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <Suspense
-      fallback={
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
-      }
+      fallback={<PageLoader />}
     >
       <RegisterForm />
     </Suspense>

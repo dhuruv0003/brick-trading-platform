@@ -3,12 +3,13 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
-  Container, Typography, Box, Grid2 as Grid, Chip, Button, CircularProgress, Paper, Stack, Divider,
+  Container, Typography, Box, Grid2 as Grid, Chip, Button, Paper, Stack, Divider,
 } from '@mui/material';
+import { PageLoader } from '../../../components/common/Loaders';
+import { ErrorState } from '../../../components/common/ErrorState';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import EngineeringIcon from '@mui/icons-material/Engineering';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { projectsAPI } from '../../../services/api';
 
 export default function ProjectDetailPage() {
@@ -34,24 +35,11 @@ export default function ProjectDetailPage() {
   }, [slug]);
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 16 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   if (notFound || !project) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 12, textAlign: 'center' }}>
-        <Typography variant="h4" fontWeight={800} sx={{ mb: 2 }}>
-          Project not found
-        </Typography>
-        <Button component={Link} href="/projects" variant="contained" startIcon={<ArrowBackIcon />}>
-          Back to Projects
-        </Button>
-      </Container>
-    );
+    return <ErrorState title="Project not found" backHref="/projects" backLabel="Back to Projects" />;
   }
 
   return (
@@ -138,7 +126,7 @@ export default function ProjectDetailPage() {
                 )}
               </Stack>
               <Divider sx={{ my: 3 }} />
-              <Button component={Link} href="/quote" variant="contained" fullWidth>
+              <Button component={Link} href="/products" variant="contained" fullWidth>
                 Start Your Project
               </Button>
             </Paper>

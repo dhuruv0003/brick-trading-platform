@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Divider, Button, Select, MenuItem,
-  FormControl, InputLabel, CircularProgress, Alert, Chip,
+  FormControl, InputLabel, Alert, Chip,
 } from '@mui/material';
+import { PageLoader } from '../../../../components/common/Loaders';
+import { ErrorState } from '../../../../components/common/ErrorState';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -82,12 +84,10 @@ export default function AdminOrderDetailsPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
-      <CircularProgress sx={{ mt: 4 }}/>
-    </Box>
+    <PageLoader />
   );
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!order) return <Typography>Order not found</Typography>;
+  if (error) return <ErrorState title="Something went wrong" message={error} backHref="/admin/orders" backLabel="Back to Orders" />;
+  if (!order) return <ErrorState title="Order not found" backHref="/admin/orders" backLabel="Back to Orders" />;
 
   // Only the current status plus whatever the backend's state machine
   // actually allows next — this is what prevents the admin from picking

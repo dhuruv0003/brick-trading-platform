@@ -1,7 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Button, CircularProgress } from '@mui/material';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Button } from '@mui/material';
+import { PageLoader } from '../../../components/common/Loaders';
+import { ErrorState } from '../../../components/common/ErrorState';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { ordersAPI } from '../../../services/api';
 import dayjs from 'dayjs';
@@ -9,19 +11,25 @@ import dayjs from 'dayjs';
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await ordersAPI.getAll();
+      setOrders(res.data.data);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load your orders. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await ordersAPI.getAll();
-        setOrders(res.data.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -35,11 +43,8 @@ export default function OrdersPage() {
     }
   };
 
-  if (loading) return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
-      <CircularProgress />
-    </Box>
-  );
+  if (loading) return <PageLoader />;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <Box>

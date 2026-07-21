@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { SectionLoader } from '../../components/common/Loaders';
+import { ErrorState } from '../../components/common/ErrorState';
 import {
   Container,
   Typography,
@@ -12,7 +14,6 @@ import {
   Button,
   TextField,
   Chip,
-  CircularProgress,
   useTheme,
   InputAdornment,
 } from '@mui/material';
@@ -28,6 +29,7 @@ export default function BlogPage() {
   const [selectedCat, setSelectedCat] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchCategories();
@@ -45,6 +47,7 @@ export default function BlogPage() {
 
   const fetchPosts = async () => {
     setLoading(true);
+    setError('');
     try {
       const params: any = { status: 'published' };
       if (selectedCat !== 'all') params.category = selectedCat;
@@ -54,6 +57,7 @@ export default function BlogPage() {
       setPosts(res.data.data || []);
     } catch (err) {
       console.error('Error fetching blog posts:', err);
+      setError('Failed to load articles. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -123,9 +127,9 @@ export default function BlogPage() {
 
       {/* Articles Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <SectionLoader minHeight={320} />
+      ) : error ? (
+        <ErrorState message={error} minHeight={320} />
       ) : posts.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 6 }}>
           <Typography variant="subtitle1" sx={{ color: theme.palette.text.secondary }}>

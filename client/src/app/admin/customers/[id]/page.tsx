@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Grid, Button, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, Paper, Grid, Button } from '@mui/material';
+import { PageLoader } from '../../../../components/common/Loaders';
+import { ErrorState } from '../../../../components/common/ErrorState';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -29,12 +31,10 @@ export default function AdminCustomerDetailsPage() {
   }, [customerId]);
 
   if (loading) return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
-      <CircularProgress />
-    </Box>
+<PageLoader />
   );
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!customer) return <Typography>Customer not found</Typography>;
+  if (error) return <ErrorState title="Something went wrong" message={error} backHref="/admin/customers" backLabel="Back to Customers" />;
+  if (!customer) return <ErrorState title="Customer not found" backHref="/admin/customers" backLabel="Back to Customers" />;
 
   return (
     <Box>

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Box, Typography, Paper, Grid, TextField, Button, Divider, Alert, CircularProgress, 
+  Box, Typography, Paper, Grid, TextField, Button, Divider, Alert, 
   Radio, RadioGroup, FormControlLabel, FormControl
 } from '@mui/material';
 import useCart from '../../hooks/useCart';
@@ -11,6 +11,7 @@ import useCustomerAuth from '../../hooks/useCustomerAuth';
 import { customerAddressAPI, ordersAPI } from '../../services/api';
 import CustomerGuard from '../../components/guards/CustomerGuard';
 import { getQuantityRules, getProductPricingType, describeRule } from '../../lib/quantityRules';
+import { PageLoader } from '../../components/common/Loaders';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -141,7 +142,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (loading) return <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>;
+  if (loading) return <PageLoader />;
 
   return (
     <CustomerGuard>

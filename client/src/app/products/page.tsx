@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box, Container, Typography, Grid, Button, TextField, FormControl,
-  InputLabel, Select, MenuItem, Tabs, Tab, CircularProgress, useTheme,
+  InputLabel, Select, MenuItem, Tabs, Tab, useTheme,
   InputAdornment, Skeleton, Pagination, Chip, Switch, FormControlLabel,
   Slider, Paper, Collapse,
 } from '@mui/material';

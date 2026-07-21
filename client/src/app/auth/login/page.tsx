@@ -12,7 +12,6 @@ import {
   InputAdornment,
   IconButton,
   Divider,
-  CircularProgress,
   FormControlLabel,
   Checkbox,
 } from '@mui/material';
@@ -22,6 +21,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import GoogleIcon from '@mui/icons-material/Google';
 import useCustomerAuth from '../../../hooks/useCustomerAuth';
 import GuestOnlyGuard from '../../../components/guards/GuestOnlyGuard';
+import { PageLoader } from '../../../components/common/Loaders';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -184,11 +184,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense
-      fallback={
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
-      }
+      fallback={<PageLoader />}
     >
       <LoginForm />
     </Suspense>

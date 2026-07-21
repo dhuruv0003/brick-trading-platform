@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Paper, Button, CircularProgress, Chip } from '@mui/material';
+import { Box, Typography, Grid, Paper, Button, Chip, Alert } from '@mui/material';
 import Link from 'next/link';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -8,6 +8,7 @@ import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import useCustomerAuth from '../../../hooks/useCustomerAuth';
+import { SectionLoader } from '../../../components/common/Loaders';
 import useWishlist from '../../../hooks/useWishlist';
 import { ordersAPI, customerAddressAPI } from '../../../services/api';
 import dayjs from 'dayjs';
@@ -30,9 +31,11 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [addressCount, setAddressCount] = useState(0);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [fetchError, setFetchError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
+      setFetchError('');
       try {
         const [ordersRes, addrRes] = await Promise.all([
           // Fetch up to the backend's max page size so Total/Active/Completed
@@ -46,6 +49,7 @@ export default function DashboardPage() {
         setAddressCount((addrRes.data.data.addresses || []).length);
       } catch (err) {
         console.error('Dashboard fetch error', err);
+        setFetchError('Some of your account data couldn\'t be loaded. Stats below may be incomplete — try refreshing.');
       } finally {
         setLoadingOrders(false);
       }
@@ -96,6 +100,10 @@ export default function DashboardPage() {
         Welcome back, {customer?.firstName}!
       </Typography>
 
+      {fetchError && (
+        <Alert severity="error" sx={{ mb: 3 }}>{fetchError}</Alert>
+      )}
+
       {/* ── Stats ────────────────────────────────────────────────────────── */}
       <Grid container spacing={3} mb={4}>
         {stats.map((stat, i) => (
@@ -134,7 +142,7 @@ export default function DashboardPage() {
             </Box>
 
             {loadingOrders ? (
-              <CircularProgress size={24} />
+              <SectionLoader compact />
             ) : orders.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 3 }}>
                 <Typography variant="body2" color="text.secondary" mb={1}>No orders yet.</Typography>

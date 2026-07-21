@@ -9,18 +9,20 @@ import {
   CardMedia,
   Tabs,
   Tab,
-  CircularProgress,
   Dialog,
   IconButton,
   useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { galleryAPI } from '../../services/api';
+import { SectionLoader } from '../../components/common/Loaders';
+import { ErrorState } from '../../components/common/ErrorState';
 
 export default function GalleryPage() {
   const theme = useTheme();
   const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [category, setCategory] = useState('all');
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
@@ -30,6 +32,7 @@ export default function GalleryPage() {
 
   const fetchGallery = async () => {
     setLoading(true);
+    setError('');
     try {
       const params: any = {};
       if (category !== 'all') params.category = category;
@@ -39,6 +42,7 @@ export default function GalleryPage() {
       setImages(Array.isArray(items) ? items : []);
     } catch (err) {
       console.error('Error fetching gallery:', err);
+      setError('Failed to load gallery images. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -62,7 +66,9 @@ export default function GalleryPage() {
           onChange={(e, val) => setCategory(val)}
           textColor="primary"
           indicatorColor="primary"
-          centered
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
         >
           <Tab value="all" label="All Images" />
           <Tab value="products" label="Products" />
@@ -74,9 +80,9 @@ export default function GalleryPage() {
 
       {/* Gallery Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <SectionLoader minHeight={320} />
+      ) : error ? (
+        <ErrorState message={error} minHeight={320} />
       ) : images.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 6 }}>
           <Typography variant="subtitle1" sx={{ color: theme.palette.text.secondary }}>

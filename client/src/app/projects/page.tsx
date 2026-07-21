@@ -1,9 +1,10 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { SectionLoader } from '../../components/common/Loaders';
+import { ErrorState } from '../../components/common/ErrorState';
 import {
-  Container, Typography, Box, Grid2 as Grid, Card, CardContent, CardMedia, Chip, Button,
-  CircularProgress, useTheme, MenuItem, TextField,
+  Container, Typography, Box, Grid2 as Grid, Card, CardContent, CardMedia, Chip, Button, useTheme, MenuItem, TextField,
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { projectsAPI } from '../../services/api';
@@ -22,6 +23,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchProjects();
@@ -30,6 +32,7 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     setLoading(true);
+    setError('');
     try {
       const params: any = { limit: 24 };
       if (category !== 'all') params.category = category;
@@ -37,6 +40,7 @@ export default function ProjectsPage() {
       setProjects(res.data.data || []);
     } catch (err) {
       console.error('Error fetching projects:', err);
+      setError('Failed to load projects. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -71,12 +75,14 @@ export default function ProjectsPage() {
         </Box>
 
         {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-            <CircularProgress />
-          </Box>
+          <SectionLoader minHeight={320} />
         )}
 
-        {!loading && projects.length === 0 && (
+        {!loading && error && (
+          <ErrorState message={error} minHeight={320} />
+        )}
+
+        {!loading && !error && projects.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <Typography variant="h6" color="text.secondary">
               No projects found in this category yet.
@@ -84,7 +90,7 @@ export default function ProjectsPage() {
           </Box>
         )}
 
-        {!loading && projects.length > 0 && (
+        {!loading && !error && projects.length > 0 && (
           <Grid container spacing={4}>
             {projects.map((project: any) => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={project._id}>

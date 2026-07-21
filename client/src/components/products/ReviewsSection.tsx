@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
+import { SectionLoader } from '../common/Loaders';
 import {
   Box, Typography, Rating, Paper, Button, TextField, Avatar, Divider,
-  CircularProgress, Alert, Chip, LinearProgress, Dialog, DialogTitle,
+  Alert, Chip, LinearProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, IconButton, Pagination,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -161,7 +162,7 @@ export default function ReviewsSection({ productSlug, productId }: Props) {
 
       {/* ── Review list ─────────────────────────────────────────────────── */}
       {loading ? (
-        <CircularProgress size={28} sx={{ display: 'block', mx: 'auto', my: 4 }} />
+        <SectionLoader compact />
       ) : reviews.length === 0 ? (
         <Alert severity="info" sx={{ borderRadius: 2 }}>
           No reviews yet. {isAuthenticated && !myReview && 'Be the first to review this product!'}

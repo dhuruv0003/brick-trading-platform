@@ -194,7 +194,6 @@ export const inquiriesAPI = {
 };
 
 export const quotesAPI = {
-  submit: (data) => api.post('/quotes', data),
   getAll: (params) => api.get('/admin/quotes', { params }),
   update: (id, data) => api.patch(`/admin/quotes/${id}`, data),
 };

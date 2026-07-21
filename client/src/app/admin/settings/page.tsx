@@ -9,13 +9,32 @@ import {
 import SaveIcon from '@mui/icons-material/Save';
 import { settingsAPI } from '../../../services/api';
 
-const GROUPS = ['general', 'contact', 'social', 'seo', 'email'];
+const GROUPS = ['homepage', 'general', 'contact', 'social', 'seo', 'email'];
+
+// Keys the storefront actually reads (homepage stats, footer contact/social
+// info, etc.) — these must be marked isPublic so they come back from
+// GET /settings/public. Anything not in this list defaults to private,
+// matching the original scaffold's behavior for admin-only fields.
+const PUBLIC_KEYS = new Set([
+  'homepage_stats',
+  'company_name', 'company_tagline', 'company_address',
+  'phone_primary', 'phone_whatsapp', 'email_primary',
+  'facebook_url', 'instagram_url', 'linkedin_url', 'twitter_url',
+]);
+
+const DEFAULT_STATS = [
+  { val: '15+', label: 'Years of Trust' },
+  { val: '500M+', label: 'Bricks Delivered' },
+  { val: '10k+', label: 'Happy Customers' },
+  { val: '50+', label: 'Fleet Vehicles' },
+];
 
 export default function AdminSettingsPage() {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState('general');
+  const [tab, setTab] = useState('homepage');
   const [values, setValues] = useState<Record<string, any>>({});
+  const [stats, setStats] = useState(DEFAULT_STATS);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'settings'],
@@ -27,6 +46,14 @@ export default function AdminSettingsPage() {
       const map: Record<string, any> = {};
       data.forEach((s: any) => { map[s.key] = s; });
       setValues(map);
+
+      const rawStats = map['homepage_stats']?.value;
+      const parsed = typeof rawStats === 'string' ? JSON.parse(rawStats) : rawStats;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Always keep exactly 4 rows in the editor, padding with blanks if fewer were saved.
+        const padded = [...parsed, ...DEFAULT_STATS].slice(0, 4);
+        setStats(padded);
+      }
     }
   }, [data]);
 
@@ -46,7 +73,25 @@ export default function AdminSettingsPage() {
   const handleSaveField = (key: string) => {
     const item = values[key];
     if (!item) return;
-    saveMutation.mutate({ key: item.key, value: item.value, type: item.type || 'string', group: item.group, label: item.label, isPublic: item.isPublic });
+    saveMutation.mutate({
+      key: item.key,
+      value: item.value,
+      type: item.type || 'string',
+      group: item.group,
+      label: item.label,
+      isPublic: PUBLIC_KEYS.has(key) ? true : item.isPublic,
+    });
+  };
+
+  const handleSaveStats = () => {
+    saveMutation.mutate({
+      key: 'homepage_stats',
+      value: stats,
+      type: 'json',
+      group: 'homepage',
+      label: 'Homepage Stats Bar',
+      isPublic: true,
+    });
   };
 
   const groupSettings = (group: string) => Object.values(values).filter((s: any) => s.group === group);
@@ -55,7 +100,7 @@ export default function AdminSettingsPage() {
   const KNOWN_FIELDS: Record<string, { key: string; label: string; multiline?: boolean }[]> = {
     general: [
       { key: 'company_name', label: 'Company Name' },
-      { key: 'company_tagline', label: 'Tagline' },
+      { key: 'company_tagline', label: 'Tagline (shown in footer)', multiline: true },
       { key: 'company_address', label: 'Address', multiline: true },
     ],
     contact: [
@@ -67,6 +112,7 @@ export default function AdminSettingsPage() {
     social: [
       { key: 'facebook_url', label: 'Facebook URL' },
       { key: 'instagram_url', label: 'Instagram URL' },
+      { key: 'twitter_url', label: 'Twitter / X URL' },
       { key: 'linkedin_url', label: 'LinkedIn URL' },
     ],
     seo: [
@@ -97,7 +143,48 @@ export default function AdminSettingsPage() {
 
         <Box sx={{ p: 3 }}>
           {isLoading && <Skeleton variant="rounded" height={200} />}
-          {!isLoading && (
+          {!isLoading && tab === 'homepage' && (
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+                Stats Bar
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                Shown on the homepage just below the hero banner (e.g. &quot;15+ Years of Trust&quot;).
+              </Typography>
+              <Grid container spacing={2}>
+                {stats.map((stat, i) => (
+                  <Grid size={{ xs: 12, sm: 6 }} key={i}>
+                    <Box sx={{ display: 'flex', gap: 1.5, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                      <TextField
+                        label="Value"
+                        placeholder="e.g. 15+"
+                        value={stat.val}
+                        onChange={(e) => setStats((s) => s.map((row, idx) => (idx === i ? { ...row, val: e.target.value } : row)))}
+                        sx={{ flex: 1 }}
+                      />
+                      <TextField
+                        label="Label"
+                        placeholder="e.g. Years of Trust"
+                        value={stat.label}
+                        onChange={(e) => setStats((s) => s.map((row, idx) => (idx === i ? { ...row, label: e.target.value } : row)))}
+                        sx={{ flex: 2 }}
+                      />
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                sx={{ mt: 2.5 }}
+                onClick={handleSaveStats}
+                disabled={saveMutation.isPending}
+              >
+                Save Stats
+              </Button>
+            </Box>
+          )}
+          {!isLoading && tab !== 'homepage' && (
             <Grid container spacing={2.5}>
               {fieldsForGroup(tab).map((field) => (
                 <Grid size={12} key={field.key}>

@@ -19,7 +19,7 @@ const settingSchema = new mongoose.Schema(
     },
     group: {
       type: String,
-      enum: ['general', 'contact', 'social', 'seo', 'email', 'ai', 'other'],
+      enum: ['general', 'homepage', 'contact', 'social', 'seo', 'email', 'ai', 'other'],
       default: 'general',
     },
     label: String,

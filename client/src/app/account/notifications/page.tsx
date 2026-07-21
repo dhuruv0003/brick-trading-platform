@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   Box, Typography, Paper, Alert, List, ListItem, ListItemButton,
-  ListItemText, IconButton, Button, CircularProgress, Divider,
+  ListItemText, IconButton, Button, Divider,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -11,6 +11,7 @@ import CampaignIcon from '@mui/icons-material/Campaign';
 import PersonIcon from '@mui/icons-material/Person';
 import { useRouter } from 'next/navigation';
 import useNotifications from '../../../hooks/useNotifications';
+import { SectionLoader } from '../../../components/common/Loaders';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -50,7 +51,7 @@ export default function NotificationsPage() {
 
       <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
         {loading ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+          <SectionLoader />
         ) : notifications.length === 0 ? (
           <Box sx={{ p: 4 }}>
             <Alert severity="info" sx={{ borderRadius: 2 }}>

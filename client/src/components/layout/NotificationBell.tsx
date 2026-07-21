@@ -1,8 +1,9 @@
 'use client';
 import React, { useState } from 'react';
+import { SectionLoader } from '../common/Loaders';
 import {
   IconButton, Badge, Popover, Box, Typography, List, ListItem,
-  ListItemText, ListItemButton, Button, Divider, CircularProgress,
+  ListItemText, ListItemButton, Button, Divider,
   IconButton as MuiIconButton,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -62,7 +63,7 @@ export default function NotificationBell() {
         <Divider />
 
         {loading ? (
-          <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={24} /></Box>
+          <SectionLoader compact />
         ) : notifications.length === 0 ? (
           <Box sx={{ py: 4, textAlign: 'center' }}>
             <NotificationsIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />

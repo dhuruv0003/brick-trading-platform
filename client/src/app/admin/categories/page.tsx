@@ -32,15 +32,18 @@ import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { categoriesAPI } from '../../../services/api';
+import { categoriesAPI, uploadAPI } from '../../../services/api';
+import { useSnackbar } from 'notistack';
 import useAdminResource from '../../../hooks/useAdminResource';
 import ConfirmDialog from '../../../components/admin/ConfirmDialog';
+import { getProductImageUrl, handleProductImageError } from '../../../lib/productImage';
 
-const EMPTY_FORM = { name: '', description: '', parent: '', isActive: true };
+const EMPTY_FORM = { name: '', description: '', parent: '', isActive: true, image: '' };
 
 export default function AdminCategoriesPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { enqueueSnackbar } = useSnackbar();
   const {
     items: categories,
     meta,
@@ -60,6 +63,7 @@ export default function AdminCategoriesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 400);
@@ -75,8 +79,27 @@ export default function AdminCategoriesPage() {
 
   const openEdit = (c: any) => {
     setEditingId(c._id);
-    setForm({ name: c.name || '', description: c.description || '', parent: c.parent?._id || c.parent || '', isActive: c.isActive ?? true });
+    setForm({ name: c.name || '', description: c.description || '', parent: c.parent?._id || c.parent || '', isActive: c.isActive ?? true, image: c.image || '' });
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    setUploading(true);
+    try {
+      const res = await uploadAPI.single(fd);
+      const { url } = res.data.data;
+      setForm((f) => ({ ...f, image: url }));
+      enqueueSnackbar('Image uploaded successfully.', { variant: 'success' });
+    } catch (err: any) {
+      enqueueSnackbar(err.response?.data?.message || 'Image upload failed. Please try again.', { variant: 'error' });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -113,6 +136,7 @@ export default function AdminCategoriesPage() {
           <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Image</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Parent</TableCell>
               <TableCell>Status</TableCell>
@@ -123,14 +147,14 @@ export default function AdminCategoriesPage() {
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={4}>
+                  <TableCell colSpan={5}>
                     <Skeleton height={36} />
                   </TableCell>
                 </TableRow>
               ))}
             {!isLoading && categories.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
                     No categories found.
                   </Typography>
@@ -139,6 +163,17 @@ export default function AdminCategoriesPage() {
             )}
             {categories.map((c: any) => (
               <TableRow key={c._id} hover>
+                <TableCell>
+                  <Box sx={{ width: 48, height: 36, borderRadius: 1, overflow: 'hidden', bgcolor: 'background.default' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={c.image || getProductImageUrl({ images: [] })}
+                      alt={c.name}
+                      onError={handleProductImageError}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </Box>
+                </TableCell>
                 <TableCell>{c.name}</TableCell>
                 <TableCell>{c.parent?.name || '—'}</TableCell>
                 <TableCell>
@@ -177,6 +212,41 @@ export default function AdminCategoriesPage() {
         <DialogTitle fontWeight={700}>{editingId ? 'Edit Category' : 'Add Category'}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={12}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                Category Image
+              </Typography>
+              <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1.5 }}>
+                Shown on the homepage &quot;Shop by Category&quot; section.
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 96, height: 72, borderRadius: 2, overflow: 'hidden', flexShrink: 0,
+                    bgcolor: 'background.default', border: '1px solid', borderColor: 'divider',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.image || getProductImageUrl({ images: [] })}
+                    alt="Category preview"
+                    onError={handleProductImageError}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button component="label" variant="outlined" size="small" disabled={uploading}>
+                    {uploading ? 'Uploading...' : form.image ? 'Replace' : 'Upload Image'}
+                    <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                  </Button>
+                  {form.image && (
+                    <Button size="small" color="error" onClick={() => setForm((f) => ({ ...f, image: '' }))}>
+                      Remove
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            </Grid>
             <Grid size={12}>
               <TextField label="Category Name" fullWidth required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </Grid>

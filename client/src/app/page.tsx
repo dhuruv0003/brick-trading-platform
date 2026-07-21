@@ -14,7 +14,6 @@ import {
   Chip,
   TextField,
   InputAdornment,
-  CircularProgress,
   Skeleton,
   useTheme,
   alpha,
@@ -26,7 +25,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import BusinessIcon from '@mui/icons-material/Business';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import { productsAPI, categoriesAPI } from '../services/api';
+import { productsAPI, categoriesAPI, settingsAPI } from '../services/api';
 import { useSnackbar } from 'notistack';
 import useCart, { getProductQuantityRules } from '../hooks/useCart';
 import useWishlist from '../hooks/useWishlist';
@@ -63,12 +62,34 @@ export default function Home() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [bestSellersLoading, setBestSellersLoading] = useState(true);
+  // Fallback shown only until the admin configures 'homepage_stats' in
+  // Settings — see fetchStats() below.
+  const [stats, setStats] = useState([
+    { val: '15+', label: 'Years of Trust' },
+    { val: '500M+', label: 'Bricks Delivered' },
+    { val: '10k+', label: 'Happy Customers' },
+    { val: '50+', label: 'Fleet Vehicles' },
+  ]);
 
   useEffect(() => {
     fetchCategories();
     fetchFeaturedProducts();
     fetchBestSellers();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await settingsAPI.getPublic();
+      const raw = res.data.data.settings?.homepage_stats;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setStats(parsed.slice(0, 4));
+      }
+    } catch {
+      // fail silently — keep the default stats shown above
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -315,12 +336,7 @@ export default function Home() {
           }}
         >
           <Grid container spacing={2} justifyContent="center" textAlign="center">
-            {[
-              { val: '15+', label: 'Years of Trust' },
-              { val: '500M+', label: 'Bricks Delivered' },
-              { val: '10k+', label: 'Happy Customers' },
-              { val: '50+', label: 'Fleet Vehicles' },
-            ].map((stat, i) => (
+            {stats.map((stat, i) => (
               <Grid item xs={6} md={3} key={i}>
                 <Typography variant="h3" sx={{ fontWeight: 800, color: theme.palette.primary.main, mb: 0.5, fontSize: { xs: '1.75rem', md: '2.5rem' } }}>
                   {stat.val}
@@ -388,6 +404,9 @@ export default function Home() {
                       component="img"
                       image={cat.image || FALLBACK_CATEGORY_IMAGE}
                       alt={cat.name}
+                      onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                        if (e.currentTarget.src !== FALLBACK_CATEGORY_IMAGE) e.currentTarget.src = FALLBACK_CATEGORY_IMAGE;
+                      }}
                       sx={{ height: '100%', objectFit: 'cover' }}
                     />
                     <Box

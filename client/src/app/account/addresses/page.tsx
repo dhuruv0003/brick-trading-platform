@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Button, IconButton, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, Chip, Alert, CircularProgress,
+  DialogContent, DialogActions, TextField, Chip, Alert,
 } from '@mui/material';
+import { PageLoader } from '../../../components/common/Loaders';
+import { ErrorState } from '../../../components/common/ErrorState';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
@@ -31,13 +33,16 @@ export default function AddressesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
   const [formError, setFormError] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const fetchAddresses = async () => {
+    setLoadError('');
     try {
       const res = await customerAddressAPI.getAll();
       setAddresses(res.data.data.addresses || []);
     } catch (err) {
       console.error(err);
+      setLoadError('Failed to load your addresses. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -112,10 +117,9 @@ export default function AddressesPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 4 }}>
-      <CircularProgress sx={{ mt: 4 }}/>
-    </Box>
+    <PageLoader />
   );
+  if (loadError) return <ErrorState message={loadError} />;
 
   return (
     <Box>

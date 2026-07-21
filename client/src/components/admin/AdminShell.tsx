@@ -235,6 +235,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
         <Drawer
           variant={isMobile ? 'temporary' : 'permanent'}
+          anchor={isMobile ? 'right' : 'left'}
           open={isMobile ? mobileOpen : true}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
@@ -242,7 +243,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             '& .MuiDrawer-paper': {
               width: DRAWER_WIDTH,
               boxSizing: 'border-box',
-              borderRight: `1px solid ${theme.palette.divider}`,
+              borderRight: isMobile ? 'none' : `1px solid ${theme.palette.divider}`,
+              borderLeft: isMobile ? `1px solid ${theme.palette.divider}` : 'none',
             },
           }}
         >
