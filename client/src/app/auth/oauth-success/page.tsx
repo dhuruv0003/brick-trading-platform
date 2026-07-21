@@ -30,7 +30,12 @@ function OAuthSuccessHandler() {
         // treat Google sign-ins as persistent (localStorage) by default —
         // matching the UX users expect from "Continue with Google".
         dispatch(customerLoginSuccess({ customer, token, rememberMe: true }));
-        router.push('/account/dashboard');
+
+        // Google profiles don't include a phone number. First-time sign-ups
+        // need to add one before using the account; returning customers
+        // already have it on file and go straight through.
+        const needsPhone = customer.authProvider === 'google' && !customer.phone;
+        router.push(needsPhone ? '/account/complete-profile' : '/account/dashboard');
       } catch (error) {
         console.error('OAuth profile fetch failed:', error);
         localStorage.removeItem('brickpro_customer_token');
